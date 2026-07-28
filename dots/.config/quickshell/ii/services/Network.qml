@@ -240,8 +240,12 @@ Singleton {
             root.wifiStatus = wifiStatus;
             root.ethernet = hasEthernet;
             root.wifi = hasWifi;
-            root.maybeRunPendingUpdate();
         }
+        // onExited never fires if nmcli fails to *launch* (e.g. missing binary/PATH
+        // issue) - Quickshell's Process only emits runningChanged in that case.
+        // running is the one signal guaranteed to fire either way, so use it to
+        // release the pendingUpdate guard instead of relying on onExited alone.
+        onRunningChanged: if (!running) root.maybeRunPendingUpdate()
     }
 
     Process {
@@ -253,9 +257,7 @@ Singleton {
                 root.networkName = data;
             }
         }
-        onExited: (exitCode, exitStatus) => {
-            root.maybeRunPendingUpdate();
-        }
+        onRunningChanged: if (!running) root.maybeRunPendingUpdate()
     }
 
     Process {
@@ -267,9 +269,7 @@ Singleton {
                 root.networkStrength = parseInt(data);
             }
         }
-        onExited: (exitCode, exitStatus) => {
-            root.maybeRunPendingUpdate();
-        }
+        onRunningChanged: if (!running) root.maybeRunPendingUpdate()
     }
 
     Process {
@@ -283,9 +283,9 @@ Singleton {
         stdout: StdioCollector {
             onStreamFinished: {
                 root.wifiEnabled = text.trim() === "enabled";
-                root.maybeRunPendingUpdate();
             }
         }
+        onRunningChanged: if (!running) root.maybeRunPendingUpdate()
     }
 
     Process {
