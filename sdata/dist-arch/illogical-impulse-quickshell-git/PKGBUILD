@@ -91,6 +91,7 @@ package() {
          "$pkgdir/usr/include/zstd.h" \
          "$pkgdir/usr/include/zstd_errors.h"
   rm -rf "$pkgdir/usr/include/cpptrace" \
+         "$pkgdir/usr/include/ctrace" \
          "$pkgdir/usr/lib/cmake/cpptrace" \
          "$pkgdir/usr/lib/cmake/libdwarf" \
          "$pkgdir/usr/lib/cmake/zstd" \
