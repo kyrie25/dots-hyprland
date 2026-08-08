@@ -1,4 +1,6 @@
 # Commands to run in interactive sessions can go here
+fish_add_path --prepend --move "$HOME/.local/bin"
+
 if status is-interactive
     # No greeting
     set fish_greeting

@@ -1,4 +1,7 @@
 local home_dir = os.getenv("HOME")
+local path_old = os.getenv("PATH") or ""
+
+hl.env("PATH", home_dir .. "/.local/bin:" .. path_old)
 
 -- Wayland
 hl.env("ELECTRON_OZONE_PLATFORM_HINT", "auto")

@@ -1,0 +1,95 @@
+#!/usr/bin/env bash
+# Merge GitHub pull requests into the current branch in the supplied order.
+
+set -euo pipefail
+
+usage() {
+  cat <<'EOF'
+Usage: ./merge-prs [--remote REMOTE] PR_NUMBER [PR_NUMBER ...]
+
+Fetches and merges each GitHub pull request into the current branch, in order.
+The working tree must be clean. If a merge conflicts, resolve it and run
+`git merge --continue`; then invoke this script again for the remaining PRs.
+
+Options:
+  -r, --remote REMOTE  Remote containing the GitHub repository (default: origin)
+  -h, --help           Show this help
+
+Example:
+  ./merge-prs 123 456 789
+  ./merge-prs --remote upstream 123 456
+EOF
+}
+
+remote=origin
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -r|--remote)
+      [[ $# -ge 2 ]] || { echo "Missing remote after $1" >&2; exit 2; }
+      remote=$2
+      shift 2
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    --)
+      shift
+      break
+      ;;
+    -*)
+      echo "Unknown option: $1" >&2
+      usage >&2
+      exit 2
+      ;;
+    *)
+      break
+      ;;
+  esac
+done
+
+[[ $# -gt 0 ]] || { usage >&2; exit 2; }
+
+git rev-parse --is-inside-work-tree >/dev/null 2>&1 || {
+  echo "Run this from inside a Git repository." >&2
+  exit 1
+}
+
+git remote get-url "$remote" >/dev/null 2>&1 || {
+  echo "Remote '$remote' does not exist." >&2
+  exit 1
+}
+
+if ! git diff --quiet || ! git diff --cached --quiet; then
+  echo "Working tree has uncommitted changes; commit or stash them first." >&2
+  exit 1
+fi
+
+if git rev-parse -q --verify MERGE_HEAD >/dev/null || \
+   [[ -d "$(git rev-parse --git-path rebase-merge)" ]] || \
+   [[ -d "$(git rev-parse --git-path rebase-apply)" ]]; then
+  echo "A merge or rebase is already in progress; finish or abort it first." >&2
+  exit 1
+fi
+
+for pr in "$@"; do
+  [[ $pr =~ ^[0-9]+$ ]] || {
+    echo "Invalid pull request number: $pr" >&2
+    exit 2
+  }
+
+  ref="refs/pr-merge/$pr"
+  echo "Fetching PR #$pr from $remote..."
+  git fetch "$remote" "+pull/$pr/head:$ref"
+
+  echo "Merging PR #$pr..."
+  git merge --no-edit "$ref" || {
+    echo >&2
+    echo "Merge of PR #$pr needs attention. Resolve conflicts, then run:" >&2
+    echo "  git merge --continue" >&2
+    echo "Afterward, rerun this script with the remaining PR numbers." >&2
+    exit 1
+  }
+done
+
+echo "Merged all requested pull requests."

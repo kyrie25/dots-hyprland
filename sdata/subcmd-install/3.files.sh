@@ -33,6 +33,7 @@ function auto_backup_configs(){
   esac
   if $backup;then
     backup_clashing_targets dots/.config $XDG_CONFIG_HOME "${BACKUP_DIR}/.config"
+    backup_clashing_targets dots/.local/bin $XDG_BIN_HOME "${BACKUP_DIR}/.local/bin"
     backup_clashing_targets dots/.local/share $XDG_DATA_HOME "${BACKUP_DIR}/.local/share"
     printf "${STY_BLUE}Backup into \"${BACKUP_DIR}\" finished.${STY_RST}\n"
   fi
