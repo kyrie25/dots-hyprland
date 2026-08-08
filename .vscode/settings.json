@@ -1,0 +1,5 @@
+{
+	"qt-qml.qmlls.customExePath": "/usr/lib/qt6/bin/qmlls",
+	"qt-qml.qmlls.additionalImportPaths": ["/home/kyrie/.cache/dots-hyprland/.vscode/qml-imports"],
+	"qt-qml.qmlls.useNoCMakeCalls": true
+}
