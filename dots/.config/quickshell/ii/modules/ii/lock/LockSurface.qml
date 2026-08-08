@@ -327,6 +327,8 @@ MouseArea {
         }
     }
 
+    LockWidgets {}
+
     component PasswordGuardedIconToolbarButton: IconToolbarButton {
         id: guardedBtn
         required property var targetAction

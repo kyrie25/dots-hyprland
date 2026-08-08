@@ -25,6 +25,7 @@ Item { // Player instance
     property real maxVisualizerValue: 1000 // Max value in the data points
     property int visualizerSmoothing: 2 // Number of points to average for smoothing
     property real radius
+    property var coverClickAction: null
 
     property string displayedArtFilePath: root.downloaded ? Qt.resolvedUrl(artFilePath) : ""
 
@@ -177,6 +178,19 @@ Item { // Player instance
 
                     width: size
                     height: size
+                }
+
+                MouseArea {
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        if (root.coverClickAction) {
+                            root.coverClickAction();
+                        } else {
+                            MprisController.setActivePlayer(root.player);
+                        }
+                    }
                 }
             }
 
