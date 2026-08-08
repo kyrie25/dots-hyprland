@@ -21,6 +21,11 @@ Singleton {
     property bool wifiScanning: false
     property bool wifiConnecting: connectProc.running
     property WifiAccessPoint wifiConnectTarget
+    property list<var> vpnProfiles: []
+    property string vpnConnectionTarget: ""
+    readonly property bool vpnConnecting: vpnConnectionProc.running || vpnDisconnectionProc.running
+    readonly property list<var> activeVpnProfiles: vpnProfiles.filter(profile => profile.active)
+    readonly property var primaryVpnProfile: activeVpnProfiles[0] ?? null
     readonly property list<WifiAccessPoint> wifiNetworks: []
     readonly property WifiAccessPoint active: wifiNetworks.find(n => n.active) ?? null
     readonly property list<var> friendlyWifiNetworks: [...wifiNetworks].sort((a, b) => {
@@ -80,6 +85,43 @@ Singleton {
         if (active) disconnectProc.exec(["nmcli", "connection", "down", active.ssid]);
     }
 
+    function connectVpn(profile): void {
+        if (!profile || vpnConnecting)
+            return;
+        vpnConnectionTarget = profile.name;
+        vpnConnectionProc.exec(["nmcli", "connection", "up", "id", profile.name]);
+    }
+
+    function disconnectVpn(profile): void {
+        if (!profile || vpnConnecting)
+            return;
+        vpnConnectionTarget = profile.name;
+        vpnDisconnectionProc.exec(["nmcli", "connection", "down", "id", profile.name]);
+    }
+
+    function parseNmcliFields(line) {
+        const fields = [];
+        let field = "";
+        let escaped = false;
+        for (const character of line) {
+            if (escaped) {
+                field += character;
+                escaped = false;
+            } else if (character === "\\") {
+                escaped = true;
+            } else if (character === ":") {
+                fields.push(field);
+                field = "";
+            } else {
+                field += character;
+            }
+        }
+        if (escaped)
+            field += "\\";
+        fields.push(field);
+        return fields;
+    }
+
     function openPublicWifiPortal() {
         Quickshell.execDetached(["xdg-open", "https://nmcheck.gnome.org/"]) // From some StackExchange thread, seems to work
     }
@@ -134,6 +176,34 @@ Singleton {
     }
 
     Process {
+        id: vpnConnectionProc
+        environment: ({
+            LANG: "C",
+            LC_ALL: "C"
+        })
+        onRunningChanged: {
+            if (!running) {
+                root.vpnConnectionTarget = "";
+                root.update();
+            }
+        }
+    }
+
+    Process {
+        id: vpnDisconnectionProc
+        environment: ({
+            LANG: "C",
+            LC_ALL: "C"
+        })
+        onRunningChanged: {
+            if (!running) {
+                root.vpnConnectionTarget = "";
+                root.update();
+            }
+        }
+    }
+
+    Process {
         id: changePasswordProc
         onExited: { // Re-attempt connection after changing password
             connectProc.running = false
@@ -164,7 +234,7 @@ Singleton {
 
     function update() {
         if (updateConnectionType.running || wifiStatusProcess.running ||
-            updateNetworkName.running || updateNetworkStrength.running) {
+            updateNetworkName.running || updateNetworkStrength.running || vpnProfilesProcess.running) {
             pendingUpdate = true;
             return;
         }
@@ -172,13 +242,14 @@ Singleton {
         wifiStatusProcess.running = true;
         updateNetworkName.running = true;
         updateNetworkStrength.running = true;
+        vpnProfilesProcess.running = true;
     }
 
     function maybeRunPendingUpdate() {
         if (!pendingUpdate)
             return;
         if (updateConnectionType.running || wifiStatusProcess.running ||
-            updateNetworkName.running || updateNetworkStrength.running)
+            updateNetworkName.running || updateNetworkStrength.running || vpnProfilesProcess.running)
             return;
         pendingUpdate = false;
         update();
@@ -250,11 +321,18 @@ Singleton {
 
     Process {
         id: updateNetworkName
-        command: ["sh", "-c", "nmcli -t -f NAME c show --active | head -1"]
+        command: ["nmcli", "-t", "--escape", "yes", "-f", "NAME,TYPE", "connection", "show", "--active"]
         running: true
-        stdout: SplitParser {
-            onRead: data => {
-                root.networkName = data;
+        environment: ({
+            LANG: "C",
+            LC_ALL: "C"
+        })
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const physicalConnection = text.trim().split("\n")
+                    .map(line => root.parseNmcliFields(line))
+                    .find(fields => fields[1] === "802-11-wireless" || fields[1] === "802-3-ethernet");
+                root.networkName = physicalConnection?.[0] ?? "";
             }
         }
         onRunningChanged: if (!running) root.maybeRunPendingUpdate()
@@ -287,6 +365,32 @@ Singleton {
         }
         onRunningChanged: if (!running) root.maybeRunPendingUpdate()
     }
+
+    Process {
+        id: vpnProfilesProcess
+        command: ["nmcli", "-t", "--escape", "yes", "-f", "NAME,TYPE,DEVICE", "connection", "show"]
+        environment: ({
+            LANG: "C",
+            LC_ALL: "C"
+        })
+        stdout: StdioCollector {
+            onStreamFinished: {
+                root.vpnProfiles = text.trim().split("\n")
+                    .filter(line => line.length > 0)
+                    .map(line => root.parseNmcliFields(line))
+                    .filter(fields => fields[1] === "vpn" || fields[1] === "wireguard")
+                    .map(fields => ({
+                        name: fields[0],
+                        type: fields[1],
+                        active: fields[2] !== ""
+                    }))
+                    .sort((a, b) => Number(b.active) - Number(a.active) || a.name.localeCompare(b.name));
+            }
+        }
+        onRunningChanged: if (!running) root.maybeRunPendingUpdate()
+    }
+
+    Component.onCompleted: root.update()
 
     Process {
         id: getNetworks

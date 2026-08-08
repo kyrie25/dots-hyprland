@@ -378,6 +378,13 @@ Item { // Bar content region
                     }
                     MaterialSymbol {
                         Layout.leftMargin: indicatorsRowLayout.realSpacing
+                        visible: Network.activeVpnProfiles.length > 0
+                        text: "vpn_key"
+                        iconSize: Appearance.font.pixelSize.larger
+                        color: rightSidebarButton.colText
+                    }
+                    MaterialSymbol {
+                        Layout.leftMargin: indicatorsRowLayout.realSpacing
                         visible: BluetoothStatus.available
                         text: BluetoothStatus.connected ? "bluetooth_connected" : BluetoothStatus.enabled ? "bluetooth" : "bluetooth_disabled"
                         iconSize: Appearance.font.pixelSize.larger
