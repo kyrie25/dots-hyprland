@@ -106,7 +106,7 @@ Item {
                     ContextMenuItem {
                         Layout.fillWidth: true
                         iconName: "open_in_new"
-                        label: "Open new instance"
+                        label: Translation.tr("Open new instance")
                         enabled: root.desktopEntry !== null
                         onClicked: {
                             root.desktopEntry?.execute();
@@ -129,7 +129,7 @@ Item {
                             ContextMenuItem {
                                 Layout.fillWidth: true
                                 iconName: "move_item"
-                                label: "Move to workspace"
+                                label: Translation.tr("Move to workspace")
                                 enabled: false
                                 pointingHandCursor: false
                             }
@@ -148,6 +148,8 @@ Item {
                                         implicitWidth: 28
                                         implicitHeight: 28
                                         buttonRadius: Appearance.rounding.small
+                                        colBackgroundHover: Appearance.colors.colPrimaryContainerHover
+                                        colRipple: Appearance.colors.colPrimaryContainerActive
                                         contentItem: StyledText {
                                             anchors.centerIn: parent
                                             text: String(wsButton.index + 1)
@@ -173,7 +175,7 @@ Item {
                     ContextMenuItem {
                         Layout.fillWidth: true
                         iconName: TaskbarApps.isPinned(root.appToplevel?.appId ?? "") ? "keep_off" : "keep"
-                        label: TaskbarApps.isPinned(root.appToplevel?.appId ?? "") ? "Unpin" : "Pin to dock"
+                        label: TaskbarApps.isPinned(root.appToplevel?.appId ?? "") ? Translation.tr("Unpin") : Translation.tr("Pin to dock")
                         onClicked: {
                             TaskbarApps.togglePin(root.appToplevel.appId);
                             root.close();
