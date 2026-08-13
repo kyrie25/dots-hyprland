@@ -15,17 +15,61 @@ import Quickshell.Wayland
 import Quickshell.Hyprland
 
 import qs.modules.ii.background.widgets
+import qs.modules.ii.background.widgets.calendar
 import qs.modules.ii.background.widgets.clock
+import qs.modules.ii.background.widgets.images
+import qs.modules.ii.background.widgets.media
+import qs.modules.ii.background.widgets.notes
+import qs.modules.ii.background.widgets.resources
+import qs.modules.ii.background.widgets.usercard
+import qs.modules.ii.background.widgets.visualizer
 import qs.modules.ii.background.widgets.weather
+import qs.modules.ii.background.widgets.worldclock
 
 Variants {
     id: root
     model: Quickshell.screens
 
+    function getShapeFromName(name) {
+        switch (name) {
+        case "Circle": return MaterialShape.Shape.Circle
+        case "Square": return MaterialShape.Shape.Square
+        case "Cookie12Sided": return MaterialShape.Shape.Cookie12Sided
+        case "Clover4Leaf": return MaterialShape.Shape.Clover4Leaf
+        case "Pill": return MaterialShape.Shape.Pill
+        case "Heart": return MaterialShape.Shape.Heart
+        default: return MaterialShape.Shape.Cookie7Sided
+        }
+    }
+
+    function getColorFromName(name) {
+        switch (name) {
+        case "primary": return Appearance.colors.colPrimary
+        case "secondary": return Appearance.colors.colSecondary
+        case "tertiary": return Appearance.colors.colTertiary
+        case "primaryContainer": return Appearance.colors.colPrimaryContainer
+        case "secondaryContainer": return Appearance.colors.colSecondaryContainer
+        case "tertiaryContainer": return Appearance.colors.colTertiaryContainer
+        default: return Appearance.colors.colPrimaryContainer
+        }
+    }
+
     PanelWindow {
         id: bgRoot
 
         required property var modelData
+
+        property string currentWallpaperSource: wallpaperPath
+        property string previousWallpaperSource: ""
+        property real transitionProgress: 1
+        property var shaderList: ["circlePit", "circleSelect", "magic", "Doom", "Peel", "transition", "pixelate", "stripes"]
+        property string currentShader: "magic"
+        property string wallpaperAnimation: Config.options.background.wallpaperAnimation ?? "magic"
+        property bool centeredWallpaperEnabled: Config.options.background.centeredWallpaper
+            && (!Config.options.background.centeredWallpaperOnlyWhenLocked || GlobalStates.screenLocked)
+        property int centeredWallpaperShape: root.getShapeFromName(Config.options.background.centeredWallpaperShape)
+        property int centeredWallpaperSize: Config.options.background.centeredWallpaperSize
+        property color centeredWallpaperColor: root.getColorFromName(Config.options.background.centeredWallpaperColor)
 
         // Hide when fullscreen
         property list<HyprlandWorkspace> workspacesForMonitor: Hyprland.workspaces.values.filter(workspace => workspace.monitor && workspace.monitor.name == monitor.name)
@@ -77,6 +121,9 @@ Variants {
         WlrLayershell.layer: (GlobalStates.screenLocked && !scaleAnim.running) ? WlrLayer.Overlay : WlrLayer.Bottom
         // WlrLayershell.layer: WlrLayer.Bottom
         WlrLayershell.namespace: "quickshell:background"
+        WlrLayershell.keyboardFocus: GlobalStates.desktopWidgetKeyboardFocus
+            ? WlrKeyboardFocus.OnDemand
+            : WlrKeyboardFocus.None
         anchors {
             top: true
             bottom: true
@@ -92,9 +139,50 @@ Variants {
             animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
         }
 
+        Component.onCompleted: {
+            bgRoot.currentWallpaperSource = bgRoot.wallpaperPath
+            if (bgRoot.wallpaperAnimation === "random")
+                bgRoot.currentShader = bgRoot.shaderList[Math.floor(Math.random() * bgRoot.shaderList.length)]
+            else if (bgRoot.wallpaperAnimation !== "")
+                bgRoot.currentShader = bgRoot.wallpaperAnimation
+        }
+
+        onWallpaperAnimationChanged: {
+            transitionAnimation.stop()
+            bgRoot.previousWallpaperSource = ""
+            bgRoot.transitionProgress = 1
+            if (bgRoot.wallpaperAnimation === "random")
+                bgRoot.currentShader = bgRoot.shaderList[Math.floor(Math.random() * bgRoot.shaderList.length)]
+            else if (bgRoot.wallpaperAnimation !== "")
+                bgRoot.currentShader = bgRoot.wallpaperAnimation
+        }
+
         onWallpaperPathChanged: {
-            bgRoot.updateZoomScale();
-            // Clock position gets updated after zoom scale is updated
+            bgRoot.updateZoomScale()
+            if (bgRoot.wallpaperSafetyTriggered || bgRoot.wallpaperIsVideo || bgRoot.wallpaperAnimation === "") {
+                bgRoot.previousWallpaperSource = ""
+                bgRoot.currentWallpaperSource = bgRoot.wallpaperPath
+                bgRoot.transitionProgress = 1
+                return
+            }
+
+            bgRoot.previousWallpaperSource = bgRoot.currentWallpaperSource
+            bgRoot.currentWallpaperSource = bgRoot.wallpaperPath
+            bgRoot.currentShader = bgRoot.wallpaperAnimation === "random"
+                ? bgRoot.shaderList[Math.floor(Math.random() * bgRoot.shaderList.length)]
+                : bgRoot.wallpaperAnimation
+            bgRoot.transitionProgress = 0
+        }
+
+        NumberAnimation {
+            id: transitionAnimation
+            target: bgRoot
+            property: "transitionProgress"
+            from: 0
+            to: 1
+            duration: 1200
+            easing.type: Easing.InOutCubic
+            onFinished: bgRoot.previousWallpaperSource = ""
         }
 
         // Wallpaper zoom scale
@@ -130,10 +218,12 @@ Variants {
             // Wallpaper
             StyledImage {
                 id: wallpaper
-                visible: opacity > 0 && !blurLoader.active
-                opacity: (status === Image.Ready && !bgRoot.wallpaperIsVideo) ? 1 : 0
+                visible: opacity > 0 && !blurLoader.active && !bgRoot.centeredWallpaperEnabled
+                    && (bgRoot.wallpaperAnimation === "" || bgRoot.transitionProgress >= 1)
+                opacity: status === Image.Ready && !bgRoot.wallpaperIsVideo ? 1 : 0
                 cache: false
                 smooth: false
+                layer.enabled: true
 
                 property int workspaceIndex: (bgRoot.monitor.activeWorkspace?.id ?? 1) - 1
                 property real middleFraction: 0.5
@@ -180,8 +270,12 @@ Variants {
                     return - bgRoot.parallaxTotalPixelsY * usedFractionY;
                 }
 
-                source: bgRoot.wallpaperSafetyTriggered ? "" : bgRoot.wallpaperPath
+                source: bgRoot.wallpaperSafetyTriggered ? "" : bgRoot.currentWallpaperSource
                 fillMode: Image.PreserveAspectCrop
+                onStatusChanged: {
+                    if (status === Image.Ready && bgRoot.transitionProgress === 0)
+                        transitionAnimation.restart()
+                }
                 Behavior on x {
                     NumberAnimation {
                         duration: 600
@@ -198,6 +292,42 @@ Variants {
                 height: bgRoot.scaledWallpaperHeight
             }
 
+            Image {
+                id: previousWallpaper
+                x: wallpaper.x
+                y: wallpaper.y
+                width: wallpaper.width
+                height: wallpaper.height
+                source: bgRoot.previousWallpaperSource
+                fillMode: Image.PreserveAspectCrop
+                cache: true
+                smooth: true
+                asynchronous: true
+                layer.enabled: true
+                visible: false
+            }
+
+            ShaderEffect {
+                id: transitionEffect
+                x: wallpaper.x
+                y: wallpaper.y
+                width: wallpaper.width
+                height: wallpaper.height
+                visible: bgRoot.transitionProgress < 1
+                    && bgRoot.wallpaperAnimation !== ""
+                    && !blurLoader.active
+                    && !bgRoot.centeredWallpaperEnabled
+                    && !bgRoot.wallpaperIsVideo
+                property var fromImage: previousWallpaper
+                property var toImage: wallpaper
+                property real progress: bgRoot.transitionProgress
+                property real aspectX: width / Math.max(1, height)
+                property real aspectY: 1
+                property vector2d aspectRatio: Qt.vector2d(aspectX, aspectY)
+                property vector2d origin: Qt.vector2d(0.5, 0.5)
+                fragmentShader: Qt.resolvedUrl(`shaders/${bgRoot.currentShader}.frag.qsb`)
+            }
+
             Loader {
                 id: blurLoader
                 active: Config.options.lock.blur.enable && (GlobalStates.screenLocked || scaleAnim.running)
@@ -212,7 +342,9 @@ Variants {
                     }
                 }
                 sourceComponent: GaussianBlur {
-                    source: wallpaper
+                    source: bgRoot.transitionProgress < 1 && bgRoot.wallpaperAnimation !== ""
+                        ? transitionEffect
+                        : wallpaper
                     radius: GlobalStates.screenLocked ? Config.options.lock.blur.radius : 0
                     samples: radius * 2 + 1
 
@@ -224,8 +356,59 @@ Variants {
                 }
             }
 
+            Rectangle {
+                anchors.fill: parent
+                z: 1
+                color: bgRoot.centeredWallpaperColor
+                opacity: bgRoot.centeredWallpaperEnabled ? 1 : 0
+                visible: opacity > 0
+
+                Behavior on opacity {
+                    animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
+                }
+            }
+
+            MaterialShape {
+                id: centeredWallpaperShapeItem
+                z: 2
+                anchors.centerIn: parent
+                width: bgRoot.centeredWallpaperSize
+                height: bgRoot.centeredWallpaperSize
+                color: bgRoot.centeredWallpaperColor
+                shape: bgRoot.centeredWallpaperShape
+                scale: bgRoot.centeredWallpaperEnabled ? 1 : 1.4
+                opacity: bgRoot.centeredWallpaperEnabled ? 1 : 0
+                visible: opacity > 0
+                layer.enabled: true
+                layer.effect: OpacityMask {
+                    maskSource: MaterialShape {
+                        width: centeredWallpaperShapeItem.width
+                        height: centeredWallpaperShapeItem.height
+                        shape: bgRoot.centeredWallpaperShape
+                    }
+                }
+
+                Behavior on scale {
+                    animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
+                }
+                Behavior on opacity {
+                    animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
+                }
+
+                StyledImage {
+                    anchors.fill: parent
+                    source: bgRoot.wallpaperSafetyTriggered ? "" : bgRoot.wallpaperPath
+                    fillMode: Image.PreserveAspectCrop
+                    cache: false
+                    antialiasing: true
+                    sourceSize.width: parent.width
+                    sourceSize.height: parent.height
+                }
+            }
+
             WidgetCanvas {
                 id: widgetCanvas
+                z: 3
                 width: parent.width
                 height: parent.height
                 readonly property real parallaxFactor: {
@@ -255,6 +438,39 @@ Variants {
                 }
 
                 FadeLoader {
+                    shown: Config.options.background.widgets.visualizer.enable
+                    sourceComponent: VisualizerWidget {
+                        screenWidth: bgRoot.screen.width
+                        screenHeight: bgRoot.screen.height
+                        scaledScreenWidth: bgRoot.screen.width
+                        scaledScreenHeight: bgRoot.screen.height
+                        wallpaperScale: 1
+                    }
+                }
+
+                FadeLoader {
+                    shown: Config.options.background.widgets.customImage.enable
+                    sourceComponent: CustomImage {
+                        screenWidth: bgRoot.screen.width
+                        screenHeight: bgRoot.screen.height
+                        scaledScreenWidth: bgRoot.screen.width
+                        scaledScreenHeight: bgRoot.screen.height
+                        wallpaperScale: 1
+                    }
+                }
+
+                FadeLoader {
+                    shown: Config.options.background.widgets.calendar.enable
+                    sourceComponent: CalendarWidget {
+                        screenWidth: bgRoot.screen.width
+                        screenHeight: bgRoot.screen.height
+                        scaledScreenWidth: bgRoot.screen.width
+                        scaledScreenHeight: bgRoot.screen.height
+                        wallpaperScale: 1
+                    }
+                }
+
+                FadeLoader {
                     shown: Config.options.background.widgets.weather.enable
                     sourceComponent: WeatherWidget {
                         screenWidth: bgRoot.screen.width
@@ -275,6 +491,84 @@ Variants {
                         wallpaperScale: 1
                         wallpaperSafetyTriggered: bgRoot.wallpaperSafetyTriggered
                     }
+                }
+
+                FadeLoader {
+                    shown: Config.options.background.widgets.notes.enable
+                    sourceComponent: NotesWidget {
+                        screenWidth: bgRoot.screen.width
+                        screenHeight: bgRoot.screen.height
+                        scaledScreenWidth: bgRoot.screen.width
+                        scaledScreenHeight: bgRoot.screen.height
+                        wallpaperScale: 1
+                    }
+                }
+
+                FadeLoader {
+                    shown: Config.options.background.widgets.media.enable
+                    sourceComponent: MediaWidget {
+                        screenWidth: bgRoot.screen.width
+                        screenHeight: bgRoot.screen.height
+                        scaledScreenWidth: bgRoot.screen.width
+                        scaledScreenHeight: bgRoot.screen.height
+                        wallpaperScale: 1
+                    }
+                }
+
+                FadeLoader {
+                    shown: Config.options.background.widgets.images.enable
+                    sourceComponent: ImageConverterWidget {
+                        screenWidth: bgRoot.screen.width
+                        screenHeight: bgRoot.screen.height
+                        scaledScreenWidth: bgRoot.screen.width
+                        scaledScreenHeight: bgRoot.screen.height
+                        wallpaperScale: 1
+                    }
+                }
+
+                FadeLoader {
+                    shown: Config.options.background.widgets.resources.enable
+                    sourceComponent: ResourcesWidget {
+                        screenWidth: bgRoot.screen.width
+                        screenHeight: bgRoot.screen.height
+                        scaledScreenWidth: bgRoot.screen.width
+                        scaledScreenHeight: bgRoot.screen.height
+                        wallpaperScale: 1
+                    }
+                }
+
+                FadeLoader {
+                    shown: Config.options.background.widgets.worldClock.enable
+                    sourceComponent: WorldClockWidget {
+                        screenWidth: bgRoot.screen.width
+                        screenHeight: bgRoot.screen.height
+                        scaledScreenWidth: bgRoot.screen.width
+                        scaledScreenHeight: bgRoot.screen.height
+                        wallpaperScale: 1
+                    }
+                }
+
+                FadeLoader {
+                    shown: Config.options.background.widgets.userCard.enable
+                    sourceComponent: UserCardWidget {
+                        screenWidth: bgRoot.screen.width
+                        screenHeight: bgRoot.screen.height
+                        scaledScreenWidth: bgRoot.screen.width
+                        scaledScreenHeight: bgRoot.screen.height
+                        wallpaperScale: 1
+                    }
+                }
+            }
+
+            MouseArea {
+                anchors.fill: parent
+                z: -2
+                acceptedButtons: Qt.RightButton
+                onClicked: mouse => {
+                    GlobalStates.desktopMenuScreen = bgRoot.screen
+                    GlobalStates.desktopMenuX = mouse.x
+                    GlobalStates.desktopMenuY = mouse.y
+                    GlobalStates.desktopMenuOpen = true
                 }
             }
         }

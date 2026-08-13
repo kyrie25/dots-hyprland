@@ -53,6 +53,109 @@ ContentPage {
     }
 
     ContentSection {
+        icon: "format_paint"
+        title: Translation.tr("Wallpaper style")
+
+        ConfigSelectionArray {
+            currentValue: Config.options.background.wallpaperAnimation
+            options: [
+                { displayName: Translation.tr("Disable"), icon: "block", value: "" },
+                { displayName: Translation.tr("Magic"), icon: "auto_awesome", value: "magic" },
+                { displayName: Translation.tr("Stripes"), icon: "texture_minus", value: "stripes" },
+                { displayName: Translation.tr("Random"), icon: "shuffle", value: "random" }
+            ]
+            onSelected: newValue => Config.options.background.wallpaperAnimation = newValue
+        }
+
+        ConfigSwitch {
+            buttonIcon: "wallpaper"
+            text: Translation.tr("Centered wallpaper")
+            checked: Config.options.background.centeredWallpaper
+            onCheckedChanged: Config.options.background.centeredWallpaper = checked
+        }
+
+        ConfigSwitch {
+            buttonIcon: "lock"
+            text: Translation.tr("Only when locked")
+            checked: Config.options.background.centeredWallpaperOnlyWhenLocked
+            enabled: Config.options.background.centeredWallpaper
+            onCheckedChanged: Config.options.background.centeredWallpaperOnlyWhenLocked = checked
+        }
+
+        ConfigSelectionShapeArray {
+            visible: Config.options.background.centeredWallpaper
+            currentValue: Config.options.background.centeredWallpaperShape
+            shapeColor: Appearance.colors.colPrimary
+            backgroundColor: Appearance.colors.colPrimaryContainer
+            options: ["Circle", "Square", "Cookie12Sided", "Clover4Leaf", "Pill", "Heart"]
+            onSelected: newValue => Config.options.background.centeredWallpaperShape = newValue
+        }
+
+        ColorSelectionArray {
+            visible: Config.options.background.centeredWallpaper
+            currentValue: Config.options.background.centeredWallpaperColor
+            options: ["primary", "secondary", "tertiary", "primaryContainer", "secondaryContainer", "tertiaryContainer"]
+            onSelected: newValue => Config.options.background.centeredWallpaperColor = newValue
+        }
+
+        ConfigSlider {
+            visible: Config.options.background.centeredWallpaper
+            text: Translation.tr("Centered wallpaper size")
+            value: Config.options.background.centeredWallpaperSize
+            usePercentTooltip: false
+            buttonIcon: "aspect_ratio"
+            from: 400
+            to: 800
+            stopIndicatorValues: [400]
+            onValueChanged: Config.options.background.centeredWallpaperSize = value
+        }
+    }
+
+    ContentSection {
+        icon: "widgets"
+        title: Translation.tr("Desktop widgets")
+
+        ConfigSwitch {
+            buttonIcon: "lock"
+            text: Translation.tr("Lock widget positions")
+            checked: Config.options.background.widgetsLocked
+            onCheckedChanged: Config.options.background.widgetsLocked = checked
+        }
+
+        Repeater {
+            model: [
+                { key: "visualizer", icon: "graphic_eq", name: Translation.tr("Visualizer") },
+                { key: "customImage", icon: "image", name: Translation.tr("Custom Image") },
+                { key: "weather", icon: "partly_cloudy_day", name: Translation.tr("Weather") },
+                { key: "clock", icon: "schedule", name: Translation.tr("Clock") },
+                { key: "media", icon: "music_note", name: Translation.tr("Media") },
+                { key: "images", icon: "photo_library", name: Translation.tr("Image Converter") },
+                { key: "resources", icon: "monitor_heart", name: Translation.tr("Resources") },
+                { key: "calendar", icon: "calendar_month", name: Translation.tr("Calendar") },
+                { key: "worldClock", icon: "public", name: Translation.tr("World Clock") },
+                { key: "userCard", icon: "person", name: Translation.tr("User Card") },
+                { key: "notes", icon: "note_stack_add", name: Translation.tr("Notes") }
+            ]
+
+            delegate: ConfigSwitch {
+                required property var modelData
+                buttonIcon: modelData.icon
+                text: modelData.name
+                checked: Config.options.background.widgets[modelData.key].enable
+                onCheckedChanged: Config.options.background.widgets[modelData.key].enable = checked
+            }
+        }
+
+        ConfigSelectionShapeArray {
+            currentValue: Config.options.background.widgets.customImage.shape
+            shapeColor: Appearance.colors.colPrimary
+            backgroundColor: Appearance.colors.colPrimaryContainer
+            options: ["Circle", "Square", "Cookie12Sided", "Clover4Leaf", "Pill", "Heart"]
+            onSelected: newValue => Config.options.background.widgets.customImage.shape = newValue
+        }
+    }
+
+    ContentSection {
         id: settingsClock
         icon: "clock_loader_40"
         title: Translation.tr("Widget: Clock")
@@ -611,6 +714,43 @@ ContentPage {
                         value: "mostBusy"
                     },
                 ]
+            }
+        }
+    }
+
+    ContentSection {
+        icon: "graphic_eq"
+        title: Translation.tr("Widget: Visualizer")
+
+        ConfigSwitch {
+            buttonIcon: "check"
+            text: Translation.tr("Enable")
+            checked: Config.options.background.widgets.visualizer.enable
+            onCheckedChanged: {
+                Config.options.background.widgets.visualizer.enable = checked;
+            }
+        }
+    }
+
+    ContentSection {
+        icon: "grid_4x4"
+        title: Translation.tr("Desktop alignment")
+
+        ConfigSwitch {
+            buttonIcon: "grid_4x4"
+            text: Translation.tr("Show alignment grid while dragging")
+            checked: Config.options.background.showGrid
+            onCheckedChanged: {
+                Config.options.background.showGrid = checked;
+            }
+        }
+
+        ConfigSwitch {
+            buttonIcon: "align_horizontal_center"
+            text: Translation.tr("Show snap lines when dropping")
+            checked: Config.options.background.showSnapLines
+            onCheckedChanged: {
+                Config.options.background.showSnapLines = checked;
             }
         }
     }

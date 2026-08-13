@@ -18,9 +18,11 @@ RowLayout {
     property real from: slider.from
     property real to: slider.to
     property real textWidth: 120
+    property bool showLabel: true
 
     RowLayout {
         id: row
+        visible: root.showLabel
         spacing: 10
 
         OptionalMaterialSymbol {

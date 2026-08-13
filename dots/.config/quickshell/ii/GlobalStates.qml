@@ -30,6 +30,15 @@ Singleton {
     property bool superReleaseMightTrigger: true
     property bool wallpaperSelectorOpen: false
     property bool workspaceShowNumbers: false
+    property list<real> visualizerPoints: []
+    property bool desktopMenuOpen: false
+    property var desktopMenuScreen: null
+    property real desktopMenuX: 0
+    property real desktopMenuY: 0
+    property bool desktopWidgetKeyboardFocus: false
+    property bool dropShelfOpen: false
+    property real dropShelfX: 0
+    property real dropShelfY: 0
 
     onSidebarRightOpenChanged: {
         if (GlobalStates.sidebarRightOpen) {
