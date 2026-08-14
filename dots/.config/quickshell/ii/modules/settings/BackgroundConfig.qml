@@ -172,6 +172,7 @@ ContentPage {
 
         readonly property bool digitalPresent: stylePresent("digital")
         readonly property bool cookiePresent: stylePresent("cookie")
+        readonly property bool pixelPresent: stylePresent("pixel")
 
         ConfigRow {
             Layout.fillWidth: true
@@ -243,6 +244,11 @@ ContentPage {
                             displayName: Translation.tr("Cookie"),
                             icon: "cookie",
                             value: "cookie"
+                        },
+                        {
+                            displayName: Translation.tr("Pixel"),
+                            icon: "grid_view",
+                            value: "pixel"
                         }
                     ]
                 }
@@ -266,6 +272,11 @@ ContentPage {
                             displayName: Translation.tr("Cookie"),
                             icon: "cookie",
                             value: "cookie"
+                        },
+                        {
+                            displayName: Translation.tr("Pixel"),
+                            icon: "grid_view",
+                            value: "pixel"
                         }
                     ]
                 }
@@ -318,6 +329,26 @@ ContentPage {
                     StyledToolTip {
                         text: Translation.tr("Aligns the date and quote to left, center or right depending on its position on the screen.")
                     }
+                }
+            }
+
+            ConfigSwitch {
+                buttonIcon: "auto_awesome"
+                text: Translation.tr("Automatic colors")
+                checked: Config.options.background.widgets.clock.color === ""
+                onCheckedChanged: {
+                    if (checked && Config.options.background.widgets.clock.color !== "") {
+                        Config.options.background.widgets.clock.color = "";
+                    }
+                }
+            }
+
+            ColorSelectionArray {
+                icon: "palette"
+                text: Translation.tr("Color")
+                currentValue: Config.options.background.widgets.clock.color
+                onSelected: newValue => {
+                    Config.options.background.widgets.clock.color = newValue;
                 }
             }
 
@@ -650,6 +681,30 @@ ContentPage {
         }
 
         ContentSubsection {
+            visible: settingsClock.pixelPresent
+            title: Translation.tr("Pixel clock settings")
+
+            ConfigSelectionArray {
+                currentValue: Config.options.background.widgets.clock.pixel.orientation
+                onSelected: newValue => {
+                    Config.options.background.widgets.clock.pixel.orientation = newValue;
+                }
+                options: [
+                    {
+                        displayName: Translation.tr("Horizontal"),
+                        icon: "swap_horiz",
+                        value: "horizontal"
+                    },
+                    {
+                        displayName: Translation.tr("Vertical"),
+                        icon: "swap_vert",
+                        value: "vertical"
+                    }
+                ]
+            }
+        }
+
+        ContentSubsection {
             title: Translation.tr("Quote")
 
             ConfigSwitch {
@@ -658,6 +713,15 @@ ContentPage {
                 checked: Config.options.background.widgets.clock.quote.enable
                 onCheckedChanged: {
                     Config.options.background.widgets.clock.quote.enable = checked;
+                }
+            }
+            ConfigSwitch {
+                buttonIcon: "font_download"
+                text: Translation.tr("Follow clock font")
+                enabled: settingsClock.digitalPresent || settingsClock.cookiePresent
+                checked: Config.options.background.widgets.clock.quote.followClock
+                onCheckedChanged: {
+                    Config.options.background.widgets.clock.quote.followClock = checked;
                 }
             }
             MaterialTextArea {

@@ -4,6 +4,7 @@ import qs
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
+import qs.modules.common.functions
 import qs.modules.common.widgets.widgetCanvas
 import qs.modules.ii.background.widgets
 
@@ -366,7 +367,7 @@ AbstractBackgroundWidget {
                 Rectangle {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    color: Appearance.colors.colLayer1
+                    color: ColorUtils.transparentize(Appearance.colors.colLayer0, 0.8)
                     radius: (Appearance.rounding?.verylarge ?? 30) - 8
 
                     ColumnLayout {
@@ -407,4 +408,3 @@ AbstractBackgroundWidget {
         }
     }
 }
-

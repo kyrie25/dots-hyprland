@@ -4,6 +4,7 @@ import qs
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
+import qs.modules.common.functions
 import qs.modules.common.widgets.widgetCanvas
 import qs.modules.ii.background.widgets
 
@@ -109,7 +110,7 @@ AbstractBackgroundWidget {
                     Item { Layout.fillWidth: true }
                     Rectangle {
                         radius: Appearance.rounding.full
-                        color: Appearance.colors.colSurfaceContainerLow
+                        color: ColorUtils.transparentize(Appearance.colors.colLayer0, 0.8)
                         implicitWidth: 28; implicitHeight: 28
                         MaterialSymbol {
                             anchors.centerIn: parent
@@ -160,7 +161,7 @@ AbstractBackgroundWidget {
                             radius: Appearance.rounding.normal
                             color: modelData.isDay
                                 ? Appearance.colors.colPrimary
-                                : Appearance.colors.colSurfaceContainerLow
+                                : ColorUtils.transparentize(Appearance.colors.colLayer0, 0.8)
                             property color fg: modelData.isDay
                                 ? Appearance.colors.colOnPrimary
                                 : Appearance.colors.colOnLayer0
@@ -238,26 +239,26 @@ AbstractBackgroundWidget {
 
                     StyledComboBoxSearch {
                         model: WorldClock.comboModel
-                        colBackground: Appearance.colors.colSurfaceContainerLow
+                        colBackground: ColorUtils.transparentize(Appearance.colors.colLayer0, 0.8)
                         textRole: "label"
                         currentIndex: WorldClock.comboModel.findIndex(m => m.tz === WorldClock.timezones[0])
                         onActivated: (idx) => WorldClock.setTimezone(0, WorldClock.comboModel[idx].tz)
                     }
                     StyledComboBoxSearch {
                         model: WorldClock.comboModel; textRole: "label"
-                        colBackground: Appearance.colors.colSurfaceContainerLow
+                        colBackground: ColorUtils.transparentize(Appearance.colors.colLayer0, 0.8)
                         currentIndex: WorldClock.comboModel.findIndex(m => m.tz === WorldClock.timezones[1])
                         onActivated: (idx) => WorldClock.setTimezone(1, WorldClock.comboModel[idx].tz)
                     }
                     StyledComboBoxSearch {
                         model: WorldClock.comboModel; textRole: "label"
-                        colBackground: Appearance.colors.colSurfaceContainerLow
+                        colBackground: ColorUtils.transparentize(Appearance.colors.colLayer0, 0.8)
                         currentIndex: WorldClock.comboModel.findIndex(m => m.tz === WorldClock.timezones[2])
                         onActivated: (idx) => WorldClock.setTimezone(2, WorldClock.comboModel[idx].tz)
                     }
                     StyledComboBoxSearch {
                         model: WorldClock.comboModel; textRole: "label"
-                        colBackground: Appearance.colors.colSurfaceContainerLow
+                        colBackground: ColorUtils.transparentize(Appearance.colors.colLayer0, 0.8)
                         currentIndex: WorldClock.comboModel.findIndex(m => m.tz === WorldClock.timezones[3])
                         onActivated: (idx) => WorldClock.setTimezone(3, WorldClock.comboModel[idx].tz)
                     }
@@ -321,4 +322,3 @@ AbstractBackgroundWidget {
         }
     }
 }
-

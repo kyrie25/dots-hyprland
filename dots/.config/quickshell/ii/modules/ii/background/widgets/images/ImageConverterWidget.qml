@@ -181,7 +181,7 @@ AbstractBackgroundWidget {
                                                 Appearance.colors.colError.r,
                                                 Appearance.colors.colError.g,
                                                 Appearance.colors.colError.b, 0.15)
-                        default:           return Appearance.colors.colSurfaceContainerLow 
+                        default:           return ColorUtils.transparentize(Appearance.colors.colLayer0, 0.8)
                     }
                 }
                 border.color: {
@@ -203,7 +203,8 @@ AbstractBackgroundWidget {
                     anchors.verticalCenterOffset: -14
                     visible: root.dropStatus === "converting"
                     loading: root.dropStatus === "converting"
-                    color: Appearance.colors.colPrimary
+                    colBg: Appearance.colors.colPrimary
+                    colShape: Appearance.colors.colOnPrimary
                     implicitSize: 48
                 }
 
@@ -299,9 +300,9 @@ AbstractBackgroundWidget {
                 StyledComboBox {
                     Layout.fillWidth: true
                     model: root.formatOptions
-                    colBackground: Appearance.colors.colSurfaceContainerLow
-                    colBackgroundHover: Appearance.colors.colSurfaceContainerLow
-                    colBackgroundActive: Appearance.colors.colSurfaceContainerLow // same color I didn't like the hover 
+                    colBackground: ColorUtils.transparentize(Appearance.colors.colLayer0, 0.8)
+                    colBackgroundHover: ColorUtils.transparentize(Appearance.colors.colLayer0, 0.8)
+                    colBackgroundActive: ColorUtils.transparentize(Appearance.colors.colLayer0, 0.8) // same color I didn't like the hover
                     textRole: "displayName"
                     valueRole: "value"
                     currentIndex: {

@@ -8,6 +8,8 @@ Item {
     id: root
 
     readonly property string quoteText: Config.options.background.widgets.clock.quote.text
+    property string clockStyle: Config.options.background.widgets.clock.style
+    property string pixelOrientation: Config.options.background.widgets.clock.pixel.orientation
 
     implicitWidth: quoteBox.implicitWidth
     implicitHeight: quoteBox.implicitHeight
@@ -25,7 +27,8 @@ Item {
     
     Rectangle {
         id: quoteBox
-
+        y: root.clockStyle === "pixel" && root.pixelOrientation === "horizontal" ? -26 : 0
+        x: root.clockStyle === "pixel" && root.pixelOrientation === "horizontal" ? -20 : 0
         implicitWidth: quoteRow.implicitWidth + 8 * 2
         implicitHeight: quoteRow.implicitHeight + 4 * 2
         radius: Appearance.rounding.small
@@ -49,7 +52,9 @@ Item {
                 text: Config.options.background.widgets.clock.quote.text
                 color: Appearance.colors.colOnSecondaryContainer
                 font {
-                    family: Appearance.font.family.reading
+                    family: Config.options.background.widgets.clock.quote.followClock
+                        ? Config.options.background.widgets.clock.digital.font.family
+                        : Appearance.font.family.reading
                     pixelSize: Appearance.font.pixelSize.large
                     weight: Font.Normal
                 }

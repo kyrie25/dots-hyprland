@@ -19,6 +19,12 @@ AbstractBackgroundWidget {
     readonly property string clockStyle: GlobalStates.screenLocked ? Config.options.background.widgets.clock.styleLocked : Config.options.background.widgets.clock.style
     readonly property bool forceCenter: (GlobalStates.screenLocked && Config.options.lock.centerClock)
     readonly property bool shouldShow: (!Config.options.background.widgets.clock.showOnlyWhenLocked || GlobalStates.screenLocked)
+    readonly property string customClockColorKey: Config.options.background.widgets.clock.color ?? ""
+    readonly property color resolvedClockColor: {
+        if (customClockColorKey === "") return root.colText;
+        const propName = "col" + customClockColorKey.charAt(0).toUpperCase() + customClockColorKey.slice(1);
+        return Appearance.colors[propName] ?? root.colText;
+    }
     property bool wallpaperSafetyTriggered: false
     needsColText: clockStyle === "digital"
     x: forceCenter ? ((root.screenWidth - root.width) / 2) : targetX
@@ -50,16 +56,8 @@ AbstractBackgroundWidget {
             anchors.horizontalCenter: parent.horizontalCenter
             shown: root.clockStyle === "cookie" && (root.shouldShow)
             fade: false
-            sourceComponent: Column {
-                spacing: 10
-                CookieClock {
-                    anchors.horizontalCenter: parent.horizontalCenter
-                }
-                FadeLoader {
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    shown: Config.options.background.widgets.clock.quote.enable && Config.options.background.widgets.clock.quote.text !== ""
-                    sourceComponent: CookieQuote {}
-                }
+            sourceComponent: CookieClock {
+                anchors.horizontalCenter: parent.horizontalCenter
             }
         }
 
@@ -69,8 +67,29 @@ AbstractBackgroundWidget {
             shown: root.clockStyle === "digital" && (root.shouldShow)
             fade: false
             sourceComponent: DigitalClock {
-                colText: root.colText
+                colText: root.resolvedClockColor
                 textHorizontalAlignment: root.textHorizontalAlignment
+            }
+        }
+
+        FadeLoader {
+            id: pixelClockLoader
+            anchors.horizontalCenter: parent.horizontalCenter
+            shown: root.clockStyle === "pixel" && root.shouldShow
+            fade: false
+            sourceComponent: PixelClock {}
+        }
+
+        FadeLoader {
+            id: quoteLoader
+            anchors.horizontalCenter: parent.horizontalCenter
+            shown: Config.options.background.widgets.clock.quote.enable
+                && (root.clockStyle === "pixel" || root.clockStyle === "cookie")
+                && Config.options.background.widgets.clock.quote.text !== ""
+                && root.shouldShow
+            sourceComponent: CookieQuote {
+                clockStyle: root.clockStyle
+                pixelOrientation: Config.options.background.widgets.clock.pixel.orientation
             }
         }
         StatusRow {
