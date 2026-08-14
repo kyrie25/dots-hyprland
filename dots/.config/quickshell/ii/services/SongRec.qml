@@ -41,16 +41,20 @@ Singleton {
         }
     }
     readonly property string monitorSourceString: monitorSourceToString(monitorSource)
-    property var recognizedTrack: ({ title:"", subtitle:"", url:""})
+    property var recognizedTrack: ({ title:"", subtitle:"", url:"", coverArtUrl:"", coverArtPath:""})
     property bool manuallyStopped: false
 
     function handleRecognition(jsonText) {
         try {
             var obj = JSON.parse(jsonText)
+            const coverArtUrl = obj.track.images?.coverart ?? obj.track.share?.image ?? ""
+            const trackKey = String(obj.track.key ?? Date.now()).replace(/[^A-Za-z0-9_-]/g, "_")
             root.recognizedTrack = {
                 title: obj.track.title,
                 subtitle: obj.track.subtitle,
-                url: obj.track.url
+                url: obj.track.url,
+                coverArtUrl: coverArtUrl,
+                coverArtPath: coverArtUrl === "" ? "" : `${Directories.coverArt}/songrec-${trackKey}.jpg`
             }
             musicReconizedProc.running = true
         } catch(e) {
@@ -82,7 +86,9 @@ Singleton {
         id: musicReconizedProc
         running: false
         command: [
-            "notify-send",
+            `${Directories.scriptPath}/musicRecognition/notify-recognized-music.sh`,
+            root.recognizedTrack.coverArtUrl,
+            root.recognizedTrack.coverArtPath,
             Translation.tr("Music Recognized"), 
             root.recognizedTrack.title + " - " + root.recognizedTrack.subtitle, 
             "-A", "Shazam",
