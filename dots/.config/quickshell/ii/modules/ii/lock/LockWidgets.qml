@@ -4,6 +4,7 @@ import QtQuick.Layouts
 import qs.modules.common
 import qs.modules.common.functions
 import qs.modules.common.widgets
+import qs.modules.ii.background.widgets.weather as WeatherWidgets
 import qs.modules.ii.mediaControls as MediaControls
 import qs.services
 
@@ -27,8 +28,8 @@ Item {
             topMargin: root.edgeMargin
             leftMargin: root.edgeMargin
         }
-        width: 300
-        height: 76
+        width: 420
+        height: 120
         visible: (Weather.data?.temp?.length ?? 0) > 0 && Weather.data.temp !== "0"
         opacity: visible ? 1 : 0
 
@@ -43,59 +44,10 @@ Item {
         Rectangle {
             id: weatherBackground
             anchors.fill: parent
-            radius: Appearance.rounding.large
-            color: Appearance.m3colors.m3surfaceContainer
+            radius: Appearance.rounding?.verylarge ?? 30
+            color: Appearance.colors.colPrimaryContainer
 
-            ColumnLayout {
-                anchors.fill: parent
-                anchors.margins: 14
-                spacing: 8
-
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: 8
-
-                    MaterialSymbol {
-                        fill: 0
-                        text: "location_on"
-                        iconSize: Appearance.font.pixelSize.large
-                        color: Appearance.colors.colOnSurfaceVariant
-                    }
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        spacing: -2
-
-                        StyledText {
-                            Layout.fillWidth: true
-                            text: Weather.data?.city ?? ""
-                            font.pixelSize: Appearance.font.pixelSize.normal
-                            font.weight: Font.Medium
-                            color: Appearance.colors.colOnSurfaceVariant
-                            elide: Text.ElideRight
-                        }
-                        StyledText {
-                            Layout.fillWidth: true
-                            text: Translation.tr("Feels like %1").arg(Weather.data?.tempFeelsLike ?? "--")
-                            font.pixelSize: Appearance.font.pixelSize.smaller
-                            color: Appearance.colors.colSubtext
-                            elide: Text.ElideRight
-                        }
-                    }
-                    MaterialSymbol {
-                        fill: 0
-                        text: Icons.getWeatherIcon(Weather.data?.wCode) ?? "cloud"
-                        iconSize: 38
-                        color: Appearance.colors.colOnSurfaceVariant
-                    }
-                    StyledText {
-                        text: Weather.data?.temp ?? "--"
-                        font.pixelSize: Appearance.font.pixelSize.large
-                        font.weight: Font.Medium
-                        color: Appearance.colors.colOnSurface
-                    }
-                }
-
-            }
+            WeatherWidgets.WeatherExpandedContent {}
         }
     }
 
