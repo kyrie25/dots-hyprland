@@ -91,7 +91,7 @@ Variants {
             || resolvedWallpaperType === "video"
             || /\.(mp4|webm|mkv|avi|mov)$/i.test(resolvedWallpaperPath)
         property bool showExternalFallback: wallpaperIsExternal
-            && Wallpapers.wallpaperEngineRuntimeState === "stopped"
+            && Wallpapers.wallpaperEngineRuntimeStateForMonitor(monitor?.name ?? "") === "stopped"
         property string wallpaperPath: wallpaperIsExternal
             ? (monitorWallpaper?.thumbnailPath || Config.options.background.thumbnailPath)
             : resolvedWallpaperPath

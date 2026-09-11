@@ -38,6 +38,7 @@ Singleton {
     readonly property bool thumbnailGenerationRunning: thumbgenProc.running || wallpaperEngineScanProc.running
     property real thumbnailGenerationProgress: 0
     property string wallpaperEngineRuntimeState: "running"
+    property var wallpaperEngineRuntimeStates: ({})
 
     signal changed()
     signal thumbnailGenerated(directory: string)
@@ -110,6 +111,10 @@ Singleton {
         Quickshell.execDetached([Directories.wallpaperRuntimeScriptPath, paused ? "pause" : "resume"])
     }
 
+    function wallpaperEngineRuntimeStateForMonitor(monitorName) {
+        return wallpaperEngineRuntimeStates[monitorName] ?? wallpaperEngineRuntimeState
+    }
+
     function openFallbackPicker(darkMode = Appearance.m3colors.darkmode, monitorName = "") {
         const command = [Directories.wallpaperSwitchScriptPath, "--mode", darkMode ? "dark" : "light"]
         if (monitorName.length > 0) command.push("--monitor", monitorName)
@@ -145,8 +150,18 @@ Singleton {
     function updateWallpaperEngineRuntimeState() {
         if (!wallpaperEngineStateFile.loaded) return
         const state = wallpaperEngineStateFile.text().trim()
-        if (["running", "muted", "paused", "stopped"].includes(state))
+        if (["running", "muted", "paused", "stopped", "mixed"].includes(state))
             root.wallpaperEngineRuntimeState = state
+    }
+
+    function updateWallpaperEngineMonitorStates() {
+        if (!wallpaperEngineMonitorStateFile.loaded) return
+        try {
+            const states = JSON.parse(wallpaperEngineMonitorStateFile.text())
+            root.wallpaperEngineRuntimeStates = states ?? ({})
+        } catch (error) {
+            root.wallpaperEngineRuntimeStates = ({})
+        }
     }
 
     FileView {
@@ -165,6 +180,24 @@ Singleton {
         interval: 50
         repeat: false
         onTriggered: root.updateWallpaperEngineRuntimeState()
+    }
+
+    FileView {
+        id: wallpaperEngineMonitorStateFile
+        path: Qt.resolvedUrl(`${Directories.genericCache}/linux-wallpaperengine/states.json`)
+        watchChanges: true
+        onLoadedChanged: root.updateWallpaperEngineMonitorStates()
+        onFileChanged: {
+            reload()
+            wallpaperEngineMonitorStateReadTimer.restart()
+        }
+    }
+
+    Timer {
+        id: wallpaperEngineMonitorStateReadTimer
+        interval: 50
+        repeat: false
+        onTriggered: root.updateWallpaperEngineMonitorStates()
     }
 
     Process {
