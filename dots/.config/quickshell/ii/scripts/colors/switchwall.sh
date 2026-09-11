@@ -119,9 +119,20 @@ set_wallpaper_state() {
         if [[ -n "$monitor" ]]; then
             jq --arg monitor "$monitor" --arg path "$path" --arg thumbnail "$thumbnail_path" \
                 --arg type "$wallpaper_type" --arg colorPath "$color_path" '
+                ((.background.wallpapersByMonitor // []) | map(select(.monitor == $monitor)) | .[0]) as $previous
+                |
                 .background.wallpapersByMonitor = (
                     ((.background.wallpapersByMonitor // []) | map(select(.monitor != $monitor)))
-                    + [{monitor: $monitor, path: $path, thumbnailPath: $thumbnail, type: $type}]
+                    + [{
+                        monitor: $monitor,
+                        path: $path,
+                        thumbnailPath: $thumbnail,
+                        type: $type,
+                        scaling: ($previous.scaling // "fill"),
+                        alignX: ($previous.alignX // "center"),
+                        alignY: ($previous.alignY // "center"),
+                        properties: (if $previous.path == $path then ($previous.properties // {}) else {} end)
+                    }]
                 )
                 | .background.colorWallpaperPath = $colorPath
             ' "$SHELL_CONFIG_FILE" > "$SHELL_CONFIG_FILE.tmp" && mv "$SHELL_CONFIG_FILE.tmp" "$SHELL_CONFIG_FILE"

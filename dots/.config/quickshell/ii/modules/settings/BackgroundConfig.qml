@@ -111,6 +111,11 @@ ContentPage {
         }
     }
 
+    Loader {
+        Layout.fillWidth: true
+        source: Qt.resolvedUrl("WallpaperEngineConfig.qml")
+    }
+
     ContentSection {
         icon: "widgets"
         title: Translation.tr("Desktop widgets")

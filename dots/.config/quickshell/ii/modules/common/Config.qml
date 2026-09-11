@@ -296,6 +296,23 @@ Singleton {
                 property string wallpaperType: "auto"
                 property string colorWallpaperPath: ""
                 property list<var> wallpapersByMonitor: []
+                property JsonObject wallpaperEngine: JsonObject {
+                    property int fps: 30
+                    property int antiAliasing: 4
+                    property bool paused: false
+                    property bool muted: true
+                    property int volume: 15
+                    property bool audioProcessing: true
+                    property bool particles: true
+                    property bool mouseInput: true
+                    property bool parallax: true
+                    property JsonObject behavior: JsonObject {
+                        property string fullscreen: "pause"
+                        property string maximized: "keep"
+                        property string audioPlaying: "keep"
+                        property bool fullscreenOnlyActive: true
+                    }
+                }
                 property bool centeredWallpaper: false
                 property string centeredWallpaperShape: "Cookie7Sided"
                 property int centeredWallpaperSize: 400

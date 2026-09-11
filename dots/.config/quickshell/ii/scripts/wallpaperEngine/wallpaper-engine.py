@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 
 import argparse
+import html
 import json
 import re
 from pathlib import Path
 
 
 APP_ID = "431960"
+HTML_TAG_RE = re.compile(r"<[^>]*>")
 
 
 def steam_libraries():
@@ -94,6 +96,72 @@ def project_metadata(project):
     }
 
 
+def property_label(name, metadata):
+    raw_label = metadata.get("text", metadata.get("label"))
+    label = html.unescape(HTML_TAG_RE.sub(" ", str(raw_label or "")))
+    label = " ".join(label.split())
+    if not label or label.startswith("ui_") or label.startswith("http"):
+        label = re.sub(r"[_-]+", " ", name)
+    return label.strip().title()
+
+
+def project_properties(project):
+    metadata_path = project / "project.json"
+    try:
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8", errors="replace"))
+    except (OSError, json.JSONDecodeError):
+        raise SystemExit(1)
+
+    definitions = metadata.get("general", {}).get("properties", {})
+    properties = []
+    supported_types = {
+        "bool", "slider", "combo", "color", "textinput", "file", "directory", "scenetexture"
+    }
+    for name, definition in definitions.items():
+        if not isinstance(definition, dict) or definition.get("type") not in supported_types:
+            continue
+        property_type = definition["type"]
+        order = definition.get("order", definition.get("index", 0))
+        item = {
+            "name": name,
+            "label": property_label(name, definition),
+            "type": property_type,
+            "value": definition.get("value", ""),
+            "order": order if isinstance(order, (int, float)) else 0,
+        }
+        if property_type == "slider":
+            minimum = definition.get("min", 0)
+            maximum = definition.get("max", 1)
+            step = definition.get("step", 0)
+            if not isinstance(step, (int, float)) or step <= 0:
+                precision = definition.get("precision")
+                if isinstance(precision, int) and precision > 0:
+                    step = 10 ** -precision
+                elif definition.get("fraction") or maximum - minimum <= 10:
+                    step = 0.01
+                else:
+                    step = 1
+            item.update({"min": minimum, "max": maximum, "step": step})
+        elif property_type == "combo":
+            item["options"] = [
+                {
+                    "label": property_label(str(option.get("value", "")), option),
+                    "value": option.get("value"),
+                }
+                for option in definition.get("options", [])
+                if isinstance(option, dict) and "value" in option
+            ]
+        properties.append(item)
+
+    properties.sort(key=lambda item: (item["order"], item["label"].casefold()))
+    project_info = project_metadata(project)
+    print(json.dumps({
+        "path": str(project),
+        "title": project_info["displayName"],
+        "properties": properties,
+    }, ensure_ascii=True))
+
+
 def scan(workshop):
     projects = []
     for child in workshop.iterdir():
@@ -112,6 +180,8 @@ def main():
     scan_parser.add_argument("directory", nargs="?")
     preview_parser = subparsers.add_parser("preview")
     preview_parser.add_argument("directory")
+    properties_parser = subparsers.add_parser("properties")
+    properties_parser.add_argument("directory")
     classify_parser = subparsers.add_parser("classify")
     classify_parser.add_argument("path")
     args = parser.parse_args()
@@ -140,6 +210,13 @@ def main():
             print("file")
         else:
             print("invalid")
+        return
+
+    if args.command == "properties":
+        project = Path(args.directory).expanduser()
+        if not project.is_dir():
+            raise SystemExit(1)
+        project_properties(project)
         return
 
     project = Path(args.directory).expanduser()

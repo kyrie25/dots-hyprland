@@ -1,6 +1,5 @@
 import QtQuick
 import QtQuick.Layouts
-import Qt5Compat.GraphicalEffects
 import Quickshell
 import Quickshell.Io
 import qs.services
@@ -28,6 +27,7 @@ ContentPage {
         required property bool dark
         property color colText: toggled ? Appearance.colors.colOnPrimary : Appearance.colors.colOnLayer2
         padding: 5
+        implicitHeight: Math.max(58, lightDarkButtonContent.implicitHeight + topPadding + bottomPadding)
         Layout.fillWidth: true
         toggled: Appearance.m3colors.darkmode === dark
         colBackground: Appearance.colors.colLayer2
@@ -35,8 +35,8 @@ ContentPage {
             Quickshell.execDetached(["bash", "-c", `${Directories.wallpaperSwitchScriptPath} --mode ${dark ? "dark" : "light"} --noswitch`]);
         }
         contentItem: Item {
-            anchors.centerIn: parent
             ColumnLayout {
+                id: lightDarkButtonContent
                 anchors.centerIn: parent
                 spacing: 0
                 MaterialSymbol {
@@ -61,125 +61,141 @@ ContentPage {
         title: Translation.tr("Wallpaper & Colors")
         Layout.fillWidth: true
 
-        RowLayout {
+        GridLayout {
+            id: wallpaperPreviewGrid
             Layout.fillWidth: true
+            columns: width >= 540 ? 2 : 1
+            columnSpacing: 8
+            rowSpacing: 8
 
-            Item {
-                implicitWidth: 340
-                implicitHeight: 200
-                
-                StyledImage {
-                    id: wallpaperPreview
-                    anchors.fill: parent
-                    fillMode: Image.PreserveAspectCrop
-                    source: Config.options.background.wallpaperPath
-                    cache: false
-                    layer.enabled: true
-                    layer.effect: OpacityMask {
-                        maskSource: Rectangle {
-                            width: 360
-                            height: 200
-                            radius: Appearance.rounding.normal
+            Repeater {
+                model: HyprlandData.monitors
+
+                delegate: Rectangle {
+                    required property var modelData
+                    readonly property var monitorWallpaper: Wallpapers.wallpaperForMonitor(modelData.name)
+
+                    Layout.fillWidth: true
+                    Layout.preferredWidth: 280
+                    Layout.preferredHeight: Math.max(150, width * 9 / 16)
+                    radius: Appearance.rounding.normal
+                    color: Appearance.colors.colLayer2
+                    clip: true
+
+                    StyledImage {
+                        anchors.fill: parent
+                        fillMode: Image.PreserveAspectCrop
+                        source: parent.monitorWallpaper.thumbnailPath || parent.monitorWallpaper.path
+                        cache: false
+                    }
+
+                    Rectangle {
+                        anchors {
+                            left: parent.left
+                            right: parent.right
+                            bottom: parent.bottom
+                        }
+                        height: monitorLabel.implicitHeight + 14
+                        color: ColorUtils.transparentize(Appearance.colors.colLayer0, 0.18)
+
+                        StyledText {
+                            id: monitorLabel
+                            anchors {
+                                left: parent.left
+                                right: parent.right
+                                verticalCenter: parent.verticalCenter
+                                margins: 8
+                            }
+                            text: modelData.name
+                            font.pixelSize: Appearance.font.pixelSize.small
+                            font.weight: Font.Medium
+                            color: Appearance.colors.colOnLayer0
+                            elide: Text.ElideRight
                         }
                     }
                 }
             }
+        }
 
-            ColumnLayout {
-                RippleButtonWithIcon {
-                    enabled: !randomWallProc.running
-                    visible: Config.options.policies.weeb === 1
-                    Layout.fillWidth: true
-                    buttonRadius: Appearance.rounding.small
-                    materialIcon: "ifl"
-                    mainText: randomWallProc.running ? Translation.tr("Be patient...") : Translation.tr("Random: Konachan")
-                    onClicked: {
-                        randomWallProc.scriptPath = `${Directories.scriptPath}/colors/random/random_konachan_wall.sh`;
-                        randomWallProc.running = true;
-                    }
-                    StyledToolTip {
-                        text: Translation.tr("Random SFW Anime wallpaper from Konachan\nImage is saved to ~/Pictures/Wallpapers")
-                    }
+        GridLayout {
+            id: wallpaperActionGrid
+            Layout.fillWidth: true
+            columns: width >= 540 ? 2 : 1
+            columnSpacing: 6
+            rowSpacing: 6
+
+            RippleButtonWithIcon {
+                enabled: !randomWallProc.running
+                visible: Config.options.policies.weeb === 1
+                Layout.fillWidth: true
+                buttonRadius: Appearance.rounding.small
+                materialIcon: "ifl"
+                mainText: randomWallProc.running ? Translation.tr("Be patient...") : Translation.tr("Random: Konachan")
+                onClicked: {
+                    randomWallProc.scriptPath = `${Directories.scriptPath}/colors/random/random_konachan_wall.sh`;
+                    randomWallProc.running = true;
                 }
-                RippleButtonWithIcon {
-                    enabled: !randomWallProc.running
-                    visible: Config.options.policies.weeb === 1
-                    Layout.fillWidth: true
-                    buttonRadius: Appearance.rounding.small
-                    materialIcon: "ifl"
-                    mainText: randomWallProc.running ? Translation.tr("Be patient...") : Translation.tr("Random: osu! seasonal")
-                    onClicked: {
-                        randomWallProc.scriptPath = `${Directories.scriptPath}/colors/random/random_osu_wall.sh`;
-                        randomWallProc.running = true;
-                    }
-                    StyledToolTip {
-                        text: Translation.tr("Random osu! seasonal background\nImage is saved to ~/Pictures/Wallpapers")
-                    }
+                StyledToolTip {
+                    text: Translation.tr("Random SFW Anime wallpaper from Konachan\nImage is saved to ~/Pictures/Wallpapers")
                 }
-                RippleButtonWithIcon {
-                    Layout.fillWidth: true
-                    materialIcon: "wallpaper"
-                    StyledToolTip {
-                        text: Translation.tr("Pick wallpaper image on your system")
-                    }
-                    onClicked: {
-                        Quickshell.execDetached(`${Directories.wallpaperSwitchScriptPath}`);
-                    }
-                    mainContentComponent: Component {
-                        RowLayout {
-                            spacing: 10
-                            StyledText {
-                                font.pixelSize: Appearance.font.pixelSize.small
-                                text: Translation.tr("Choose file")
-                                color: Appearance.colors.colOnSecondaryContainer
-                            }
-                            RowLayout {
-                                spacing: 3
-                                KeyboardKey {
-                                    key: "Ctrl"
-                                }
-                                KeyboardKey {
-                                    key: Config.options.cheatsheet.superKey ?? "󰖳"
-                                }
-                                StyledText {
-                                    Layout.alignment: Qt.AlignVCenter
-                                    text: "+"
-                                }
-                                KeyboardKey {
-                                    key: "T"
-                                }
-                            }
-                        }
-                    }
+            }
+
+            RippleButtonWithIcon {
+                enabled: !randomWallProc.running
+                visible: Config.options.policies.weeb === 1
+                Layout.fillWidth: true
+                buttonRadius: Appearance.rounding.small
+                materialIcon: "ifl"
+                mainText: randomWallProc.running ? Translation.tr("Be patient...") : Translation.tr("Random: osu! seasonal")
+                onClicked: {
+                    randomWallProc.scriptPath = `${Directories.scriptPath}/colors/random/random_osu_wall.sh`;
+                    randomWallProc.running = true;
                 }
-                RippleButtonWithIcon {
-                    Layout.fillWidth: true
-                    materialIcon: "animated_images"
-                    mainText: Translation.tr("Wallpaper Engine")
-                    onClicked: {
-                        Quickshell.execDetached([
-                            "qs", "-p", FileUtils.trimFileProtocol(Quickshell.shellPath("shell.qml")),
-                            "ipc", "call", "wallpaperSelector", "openWallpaperEngine"
-                        ]);
-                    }
-                    StyledToolTip {
-                        text: Translation.tr("Choose a Wallpaper Engine project for all displays or one monitor")
-                    }
+                StyledToolTip {
+                    text: Translation.tr("Random osu! seasonal background\nImage is saved to ~/Pictures/Wallpapers")
                 }
-                RowLayout {
-                    Layout.alignment: Qt.AlignHCenter
-                    Layout.fillWidth: true
+            }
+
+            RippleButtonWithIcon {
+                Layout.fillWidth: true
+                materialIcon: "wallpaper"
+                mainText: Translation.tr("Choose file")
+                onClicked: Quickshell.execDetached(`${Directories.wallpaperSwitchScriptPath}`)
+
+                StyledToolTip {
+                    text: Translation.tr("Pick a wallpaper image on your system (Ctrl+Super+T)")
+                }
+            }
+
+            RippleButtonWithIcon {
+                Layout.fillWidth: true
+                materialIcon: "animated_images"
+                mainText: Translation.tr("Wallpaper Engine")
+                onClicked: {
+                    Quickshell.execDetached([
+                        "qs", "-p", FileUtils.trimFileProtocol(Quickshell.shellPath("shell.qml")),
+                        "ipc", "call", "wallpaperSelector", "openWallpaperEngine"
+                    ]);
+                }
+                StyledToolTip {
+                    text: Translation.tr("Choose a Wallpaper Engine project for all displays or one monitor")
+                }
+            }
+
+            RowLayout {
+                Layout.columnSpan: wallpaperActionGrid.columns
+                Layout.fillWidth: true
+                Layout.minimumHeight: 58
+                uniformCellSizes: true
+
+                SmallLightDarkPreferenceButton {
                     Layout.fillHeight: true
-                    uniformCellSizes: true
+                    dark: false
+                }
 
-                    SmallLightDarkPreferenceButton {
-                        Layout.fillHeight: true
-                        dark: false
-                    }
-                    SmallLightDarkPreferenceButton {
-                        Layout.fillHeight: true
-                        dark: true
-                    }
+                SmallLightDarkPreferenceButton {
+                    Layout.fillHeight: true
+                    dark: true
                 }
             }
         }

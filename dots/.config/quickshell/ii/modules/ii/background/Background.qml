@@ -90,6 +90,8 @@ Variants {
         property bool wallpaperIsExternal: resolvedWallpaperType === "wallpaper-engine"
             || resolvedWallpaperType === "video"
             || /\.(mp4|webm|mkv|avi|mov)$/i.test(resolvedWallpaperPath)
+        property bool showExternalFallback: wallpaperIsExternal
+            && Wallpapers.wallpaperEngineRuntimeState === "stopped"
         property string wallpaperPath: wallpaperIsExternal
             ? (monitorWallpaper?.thumbnailPath || Config.options.background.thumbnailPath)
             : resolvedWallpaperPath
@@ -227,7 +229,8 @@ Variants {
                 id: wallpaper
                 visible: opacity > 0 && !blurLoader.active && !bgRoot.centeredWallpaperEnabled
                     && (bgRoot.wallpaperAnimation === "" || bgRoot.transitionProgress >= 1)
-                opacity: status === Image.Ready && !bgRoot.wallpaperIsExternal ? 1 : 0
+                opacity: status === Image.Ready
+                    && (!bgRoot.wallpaperIsExternal || bgRoot.showExternalFallback) ? 1 : 0
                 cache: false
                 smooth: false
                 layer.enabled: true

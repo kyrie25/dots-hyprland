@@ -37,6 +37,7 @@ Singleton {
     property list<string> wallpapers: [] // List of absolute file paths (without file://)
     readonly property bool thumbnailGenerationRunning: thumbgenProc.running || wallpaperEngineScanProc.running
     property real thumbnailGenerationProgress: 0
+    property string wallpaperEngineRuntimeState: "running"
 
     signal changed()
     signal thumbnailGenerated(directory: string)
@@ -50,6 +51,63 @@ Singleton {
             if (entry?.path) return entry.path
         }
         return Config.options.background.wallpaperPath
+    }
+
+    function wallpaperForMonitor(monitorName) {
+        const entry = (Config.options.background.wallpapersByMonitor || []).find(item => item.monitor === monitorName)
+        const defaults = {
+            monitor: monitorName,
+            path: Config.options.background.wallpaperPath,
+            thumbnailPath: Config.options.background.thumbnailPath,
+            type: Config.options.background.wallpaperType,
+            scaling: "fill",
+            alignX: "center",
+            alignY: "center",
+            properties: ({})
+        }
+        return Object.assign(defaults, entry || {})
+    }
+
+    function updateMonitorWallpaperSetting(monitorName, key, value) {
+        const current = Config.options.background.wallpapersByMonitor || []
+        let found = false
+        const updated = current.map(entry => {
+            if (entry.monitor !== monitorName) return entry
+            found = true
+            const copy = Object.assign({}, entry)
+            copy[key] = value
+            return copy
+        })
+        if (!found) {
+            const entry = Object.assign({}, wallpaperForMonitor(monitorName))
+            entry[key] = value
+            updated.push(entry)
+        }
+        Config.options.background.wallpapersByMonitor = updated
+        scheduleWallpaperEngineRestart()
+    }
+
+    function updateWallpaperEngineProperty(monitorName, propertyName, value) {
+        const entry = wallpaperForMonitor(monitorName)
+        const properties = Object.assign({}, entry.properties || {})
+        properties[propertyName] = value
+        updateMonitorWallpaperSetting(monitorName, "properties", properties)
+    }
+
+    function resetWallpaperEngineProperty(monitorName, propertyName) {
+        const entry = wallpaperForMonitor(monitorName)
+        const properties = Object.assign({}, entry.properties || {})
+        delete properties[propertyName]
+        updateMonitorWallpaperSetting(monitorName, "properties", properties)
+    }
+
+    function scheduleWallpaperEngineRestart() {
+        wallpaperEngineRestartTimer.restart()
+    }
+
+    function setWallpaperEnginePaused(paused) {
+        Config.options.background.wallpaperEngine.paused = paused
+        Quickshell.execDetached([Directories.wallpaperRuntimeScriptPath, paused ? "pause" : "resume"])
     }
 
     function openFallbackPicker(darkMode = Appearance.m3colors.darkmode, monitorName = "") {
@@ -75,6 +133,38 @@ Singleton {
         wallpaperEngineScanProc.running = false
         wallpaperEngineScanProc.command = ["python3", Directories.wallpaperEngineScriptPath, "scan"]
         wallpaperEngineScanProc.running = true
+    }
+
+    Timer {
+        id: wallpaperEngineRestartTimer
+        interval: 500
+        repeat: false
+        onTriggered: Quickshell.execDetached([Directories.wallpaperRuntimeScriptPath, "restart"])
+    }
+
+    function updateWallpaperEngineRuntimeState() {
+        if (!wallpaperEngineStateFile.loaded) return
+        const state = wallpaperEngineStateFile.text().trim()
+        if (["running", "muted", "paused", "stopped"].includes(state))
+            root.wallpaperEngineRuntimeState = state
+    }
+
+    FileView {
+        id: wallpaperEngineStateFile
+        path: Qt.resolvedUrl(`${Directories.genericCache}/linux-wallpaperengine/state`)
+        watchChanges: true
+        onLoadedChanged: root.updateWallpaperEngineRuntimeState()
+        onFileChanged: {
+            reload()
+            wallpaperEngineStateReadTimer.restart()
+        }
+    }
+
+    Timer {
+        id: wallpaperEngineStateReadTimer
+        interval: 50
+        repeat: false
+        onTriggered: root.updateWallpaperEngineRuntimeState()
     }
 
     Process {
