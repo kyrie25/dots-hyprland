@@ -10,8 +10,13 @@ MouseArea {
     id: root
     required property var fileModelData
     property bool isDirectory: fileModelData.fileIsDir
+    property bool isWallpaperEngine: fileModelData.wallpaperEngine ?? false
     property bool isVideo: /\.(mp4|webm|mkv|avi|mov)$/i.test(fileModelData.fileName)
-    property bool useThumbnail: Images.isValidImageByName(fileModelData.fileName) || isVideo
+        || (isWallpaperEngine && fileModelData.wallpaperType === "video")
+    property string thumbnailSource: fileModelData.thumbnailPath || fileModelData.filePath
+    property bool useThumbnail: isWallpaperEngine
+        ? thumbnailSource.length > 0
+        : Images.isValidImageByName(fileModelData.fileName) || isVideo
 
     property alias colBackground: background.color
     property alias colText: wallpaperItemName.color
@@ -62,7 +67,8 @@ MouseArea {
                     sourceComponent: ThumbnailImage {
                         id: thumbnailImage
                         generateThumbnail: false
-                        sourcePath: fileModelData.filePath
+                        sourcePath: root.thumbnailSource
+                        source: root.isWallpaperEngine ? Qt.resolvedUrl(root.thumbnailSource) : thumbnailPath
 
                         cache: false
                         fillMode: Image.PreserveAspectCrop
@@ -135,7 +141,7 @@ MouseArea {
                 Behavior on color {
                     animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
                 }
-                text: fileModelData.fileName
+                text: fileModelData.displayName || fileModelData.fileName
             }
         }
     }

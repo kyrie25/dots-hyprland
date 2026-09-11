@@ -293,6 +293,9 @@ Singleton {
                 }
                 property string wallpaperPath: ""
                 property string thumbnailPath: ""
+                property string wallpaperType: "auto"
+                property string colorWallpaperPath: ""
+                property list<var> wallpapersByMonitor: []
                 property bool centeredWallpaper: false
                 property string centeredWallpaperShape: "Cookie7Sided"
                 property int centeredWallpaperSize: 400

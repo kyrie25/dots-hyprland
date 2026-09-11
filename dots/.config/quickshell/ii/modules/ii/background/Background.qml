@@ -84,8 +84,15 @@ Variants {
         property int workspaceChunkSize: Config?.options.bar.workspaces.shown ?? 10
         property int totalWorkspaces: Math.ceil(lastWorkspaceId / workspaceChunkSize) * workspaceChunkSize
         // Wallpaper
-        property bool wallpaperIsVideo: Config.options.background.wallpaperPath.endsWith(".mp4") || Config.options.background.wallpaperPath.endsWith(".webm") || Config.options.background.wallpaperPath.endsWith(".mkv") || Config.options.background.wallpaperPath.endsWith(".avi") || Config.options.background.wallpaperPath.endsWith(".mov")
-        property string wallpaperPath: wallpaperIsVideo ? Config.options.background.thumbnailPath : Config.options.background.wallpaperPath
+        property var monitorWallpaper: (Config.options.background.wallpapersByMonitor || []).find(entry => entry.monitor === monitor?.name)
+        property string resolvedWallpaperPath: monitorWallpaper?.path || Config.options.background.wallpaperPath
+        property string resolvedWallpaperType: monitorWallpaper?.type || Config.options.background.wallpaperType || "auto"
+        property bool wallpaperIsExternal: resolvedWallpaperType === "wallpaper-engine"
+            || resolvedWallpaperType === "video"
+            || /\.(mp4|webm|mkv|avi|mov)$/i.test(resolvedWallpaperPath)
+        property string wallpaperPath: wallpaperIsExternal
+            ? (monitorWallpaper?.thumbnailPath || Config.options.background.thumbnailPath)
+            : resolvedWallpaperPath
         property bool wallpaperSafetyTriggered: {
             const enabled = Config.options.workSafety.enable.wallpaper;
             const sensitiveWallpaper = (CF.StringUtils.stringListContainsSubstring(wallpaperPath.toLowerCase(), Config.options.workSafety.triggerCondition.fileKeywords));
@@ -131,7 +138,7 @@ Variants {
             right: true
         }
         color: {
-            if (!bgRoot.wallpaperSafetyTriggered || bgRoot.wallpaperIsVideo)
+            if (!bgRoot.wallpaperSafetyTriggered || bgRoot.wallpaperIsExternal)
                 return "transparent";
             return CF.ColorUtils.mix(Appearance.colors.colLayer0, Appearance.colors.colPrimary, 0.75);
         }
@@ -159,7 +166,7 @@ Variants {
 
         onWallpaperPathChanged: {
             bgRoot.updateZoomScale()
-            if (bgRoot.wallpaperSafetyTriggered || bgRoot.wallpaperIsVideo || bgRoot.wallpaperAnimation === "") {
+            if (bgRoot.wallpaperSafetyTriggered || bgRoot.wallpaperIsExternal || bgRoot.wallpaperAnimation === "") {
                 bgRoot.previousWallpaperSource = ""
                 bgRoot.currentWallpaperSource = bgRoot.wallpaperPath
                 bgRoot.transitionProgress = 1
@@ -220,7 +227,7 @@ Variants {
                 id: wallpaper
                 visible: opacity > 0 && !blurLoader.active && !bgRoot.centeredWallpaperEnabled
                     && (bgRoot.wallpaperAnimation === "" || bgRoot.transitionProgress >= 1)
-                opacity: status === Image.Ready && !bgRoot.wallpaperIsVideo ? 1 : 0
+                opacity: status === Image.Ready && !bgRoot.wallpaperIsExternal ? 1 : 0
                 cache: false
                 smooth: false
                 layer.enabled: true
@@ -317,7 +324,7 @@ Variants {
                     && bgRoot.wallpaperAnimation !== ""
                     && !blurLoader.active
                     && !bgRoot.centeredWallpaperEnabled
-                    && !bgRoot.wallpaperIsVideo
+                    && !bgRoot.wallpaperIsExternal
                 property var fromImage: previousWallpaper
                 property var toImage: wallpaper
                 property real progress: bgRoot.transitionProgress

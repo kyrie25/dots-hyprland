@@ -53,7 +53,8 @@ AbstractBackgroundWidget {
             anchors.fill: parent
             visible: false
 
-            property string effectiveSource: "file://" + Config.options.background.wallpaperPath
+            property string effectiveSource: "file://" + (Config.options.background.colorWallpaperPath
+                || Config.options.background.wallpaperPath)
 
             Image {
                 id: bgImageA

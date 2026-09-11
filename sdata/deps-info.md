@@ -197,8 +197,14 @@ Tips:
 - `mpvpaper`
   - Used for rendering video wallpapers with mpv on Wayland.
   - Depends on `mpv` and `ffmpeg` (ffmpeg also used for video thumbnail generation).
+- `illogical-impulse-linux-wallpaperengine-git`
+  - Provides the pinned `linux-wallpaperengine` scene renderer used by the Quickshell wallpaper selector.
 
 # Actual packages
+## illogical-impulse-linux-wallpaperengine-git
+- Built from the `linux-wallpaperengine` submodule pinned to the tested `kyrie25/linux-wallpaperengine` fork revision.
+- Provides and conflicts with `linux-wallpaperengine` and `linux-wallpaperengine-git` so the pinned build replaces the moving AUR package.
+
 ## illogical-impulse-quickshell-git
 - Pinned commit.
 - Also with extra dependencies (mainly Qt things) needed by the illogical-impulse Quickshell config.

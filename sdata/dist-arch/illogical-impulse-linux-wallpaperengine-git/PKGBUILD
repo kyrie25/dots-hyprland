@@ -1,0 +1,76 @@
+groups=(illogical-impulse)
+pkgname=illogical-impulse-linux-wallpaperengine-git
+_pkgname=linux-wallpaperengine
+_commit=f6be90e7a92d4a8086f26da93b0fbe0f9dbfbd43
+pkgver=r631.f6be90e
+pkgrel=1
+pkgdesc='Pinned linux-wallpaperengine fork for illogical-impulse'
+arch=(x86_64)
+url='https://github.com/kyrie25/linux-wallpaperengine'
+license=('GPL-3.0-only')
+depends=(
+  at-spi2-core
+  ffmpeg
+  freeglut
+  glew
+  glfw
+  libcups
+  libpulse
+  libxcomposite
+  libxdamage
+  lz4
+  mpv
+  nspr
+  nss
+)
+makedepends=(
+  cmake
+  git
+  glm
+  sdl2
+  wayland-protocols
+  xorg-xrandr
+)
+provides=(linux-wallpaperengine linux-wallpaperengine-git)
+conflicts=(linux-wallpaperengine linux-wallpaperengine-git)
+
+prepare() {
+  local source_dir="$startdir/$_pkgname"
+  local actual_commit
+  local submodule_status
+  actual_commit="$(git -C "$source_dir" rev-parse HEAD)"
+  if [[ "$actual_commit" != "$_commit" ]]; then
+    error "$_pkgname submodule is at $actual_commit; expected $_commit"
+    return 1
+  fi
+  submodule_status="$(git -C "$source_dir" submodule status --recursive \
+    | grep -v 'src/External/quickjs/test262$')"
+  if grep -Eq '^[+-U]' <<< "$submodule_status"; then
+    error "$_pkgname nested submodules are not initialized at their pinned commits"
+    return 1
+  fi
+}
+
+build() {
+  cmake -B "$srcdir/build" -S "$startdir/$_pkgname" \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_INSTALL_PREFIX="/opt/$_pkgname" \
+    -Wno-dev \
+    -DCMAKE_CXX_FLAGS="-ffat-lto-objects -Wno-builtin-macro-redefined" \
+    -DCMAKE_C_FLAGS="-Wno-builtin-macro-redefined"
+  cmake --build "$srcdir/build"
+}
+
+package() {
+  DESTDIR="$pkgdir" cmake --install "$srcdir/build"
+
+  install -d -m755 "$pkgdir/usr/bin"
+  cat > "$pkgdir/usr/bin/$_pkgname" << EOF
+#!/bin/bash
+export LD_LIBRARY_PATH="/opt/$_pkgname/lib:\$LD_LIBRARY_PATH"
+cd /opt/$_pkgname
+exec ./$_pkgname "\$@"
+EOF
+  chmod 755 "$pkgdir/usr/bin/$_pkgname"
+  install -Dm644 "$startdir/$_pkgname/LICENSE" -t "$pkgdir/usr/share/licenses/$pkgname"
+}

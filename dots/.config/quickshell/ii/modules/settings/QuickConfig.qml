@@ -152,6 +152,20 @@ ContentPage {
                         }
                     }
                 }
+                RippleButtonWithIcon {
+                    Layout.fillWidth: true
+                    materialIcon: "animated_images"
+                    mainText: Translation.tr("Wallpaper Engine")
+                    onClicked: {
+                        Quickshell.execDetached([
+                            "qs", "-p", FileUtils.trimFileProtocol(Quickshell.shellPath("shell.qml")),
+                            "ipc", "call", "wallpaperSelector", "openWallpaperEngine"
+                        ]);
+                    }
+                    StyledToolTip {
+                        text: Translation.tr("Choose a Wallpaper Engine project for all displays or one monitor")
+                    }
+                }
                 RowLayout {
                     Layout.alignment: Qt.AlignHCenter
                     Layout.fillWidth: true

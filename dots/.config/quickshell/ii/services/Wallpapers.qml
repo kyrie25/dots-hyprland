@@ -22,13 +22,20 @@ Singleton {
     property url defaultFolder: Qt.resolvedUrl(`${Directories.pictures}/Wallpapers`)
     property alias folderModel: folderModel // Expose for direct binding when needed
     property string searchQuery: ""
+    property bool browsingWallpaperEngine: false
+    property string wallpaperEngineDirectory: ""
+    property list<var> wallpaperEngineItems: []
+    readonly property list<var> filteredWallpaperEngineItems: wallpaperEngineItems.filter(item =>
+        item.displayName.toLowerCase().includes(searchQuery.toLowerCase())
+        || item.workshopId.includes(searchQuery)
+        || item.wallpaperType.includes(searchQuery.toLowerCase()))
     readonly property list<string> extensions: [
         "jpg", "jpeg", "png", "webp", "avif", "bmp", "svg",
         "mp4", "webm", "mkv", "avi", "mov"
     ]
     readonly property list<string> videoExtensions: ["mp4", "webm", "mkv", "avi", "mov"]
     property list<string> wallpapers: [] // List of absolute file paths (without file://)
-    readonly property bool thumbnailGenerationRunning: thumbgenProc.running
+    readonly property bool thumbnailGenerationRunning: thumbgenProc.running || wallpaperEngineScanProc.running
     property real thumbnailGenerationProgress: 0
 
     signal changed()
@@ -37,44 +44,75 @@ Singleton {
 
     function load () {} // For forcing initialization
     
-    function openFallbackPicker(darkMode = Appearance.m3colors.darkmode) {
-        Quickshell.execDetached([Directories.wallpaperSwitchScriptPath, "--mode", darkMode ? "dark" : "light"]);
+    function currentWallpaperPath(monitorName = "") {
+        if (monitorName.length > 0) {
+            const entry = (Config.options.background.wallpapersByMonitor || []).find(item => item.monitor === monitorName)
+            if (entry?.path) return entry.path
+        }
+        return Config.options.background.wallpaperPath
     }
 
-    function apply(path, darkMode = Appearance.m3colors.darkmode) {
+    function openFallbackPicker(darkMode = Appearance.m3colors.darkmode, monitorName = "") {
+        const command = [Directories.wallpaperSwitchScriptPath, "--mode", darkMode ? "dark" : "light"]
+        if (monitorName.length > 0) command.push("--monitor", monitorName)
+        Quickshell.execDetached(command);
+    }
+
+    function apply(path, darkMode = Appearance.m3colors.darkmode, monitorName = "") {
         if (!path || path.length === 0) return;
-        Quickshell.execDetached([Directories.wallpaperSwitchScriptPath, "--mode", darkMode ? "dark" : "light", "--image", path]);
+        const command = [Directories.wallpaperSwitchScriptPath, "--mode", darkMode ? "dark" : "light", "--image", path]
+        if (monitorName.length > 0) command.push("--monitor", monitorName)
+        Quickshell.execDetached(command);
         root.changed()
+    }
+
+    function openWallpaperEngineLibrary() {
+        if (wallpaperEngineItems.length > 0) {
+            browsingWallpaperEngine = true
+            return
+        }
+        thumbnailGenerationProgress = 0
+        wallpaperEngineScanProc.running = false
+        wallpaperEngineScanProc.command = ["python3", Directories.wallpaperEngineScriptPath, "scan"]
+        wallpaperEngineScanProc.running = true
     }
 
     Process {
         id: selectProc
         property string filePath: ""
         property bool darkMode: Appearance.m3colors.darkmode
-        function select(filePath, darkMode = Appearance.m3colors.darkmode) {
+        property string monitorName: ""
+        function select(filePath, darkMode = Appearance.m3colors.darkmode, monitorName = "") {
             selectProc.filePath = filePath
             selectProc.darkMode = darkMode
-            selectProc.exec(["test", "-d", FileUtils.trimFileProtocol(filePath)])
+            selectProc.monitorName = monitorName
+            selectProc.exec(["python3", Directories.wallpaperEngineScriptPath, "classify", FileUtils.trimFileProtocol(filePath)])
         }
+        stdout: StdioCollector { id: selectOutput }
         onExited: (exitCode, exitStatus) => {
-            if (exitCode === 0) {
+            const result = selectOutput.text.trim()
+            if (result === "directory") {
                 setDirectory(selectProc.filePath);
                 return;
             }
-            root.apply(selectProc.filePath, selectProc.darkMode);
+            if (result === "file" || result === "wallpaper-engine")
+                root.apply(selectProc.filePath, selectProc.darkMode, selectProc.monitorName);
         }
     }
 
-    function select(filePath, darkMode = Appearance.m3colors.darkmode) {
-        selectProc.select(filePath, darkMode);
+    function select(filePath, darkMode = Appearance.m3colors.darkmode, monitorName = "") {
+        selectProc.select(filePath, darkMode, monitorName);
     }
 
-    function randomFromCurrentFolder(darkMode = Appearance.m3colors.darkmode) {
-        if (folderModel.count === 0) return;
-        const randomIndex = Math.floor(Math.random() * folderModel.count);
-        const filePath = folderModel.get(randomIndex, "filePath");
+    function randomFromCurrentFolder(darkMode = Appearance.m3colors.darkmode, monitorName = "") {
+        const count = browsingWallpaperEngine ? filteredWallpaperEngineItems.length : folderModel.count
+        if (count === 0) return;
+        const randomIndex = Math.floor(Math.random() * count);
+        const filePath = browsingWallpaperEngine
+            ? filteredWallpaperEngineItems[randomIndex].filePath
+            : folderModel.get(randomIndex, "filePath");
         print("Randomly selected wallpaper:", filePath);
-        root.select(filePath, darkMode);
+        root.select(filePath, darkMode, monitorName);
     }
 
     Process {
@@ -102,6 +140,7 @@ Singleton {
         }
     }
     function setDirectory(path) {
+        browsingWallpaperEngine = false
         validateDirProc.setDirectoryIfValid(path)
     }
     function navigateUp() {
@@ -137,6 +176,7 @@ Singleton {
     // Thumbnail generation
     function generateThumbnail(size: string) {
         if (!["normal", "large", "x-large", "xx-large"].includes(size)) throw new Error("Invalid thumbnail size");
+        if (browsingWallpaperEngine) return
         thumbgenProc.directory = root.directory
         thumbgenProc.running = false
         thumbgenProc.command = [
@@ -169,6 +209,28 @@ Singleton {
         onExited: (exitCode, exitStatus) => {
             // print("[Wallpapers] Thumbnail generation completed with exit code", exitCode)
             root.thumbnailGenerated(thumbgenProc.directory)
+        }
+    }
+
+    Process {
+        id: wallpaperEngineScanProc
+        stdout: StdioCollector { id: wallpaperEngineScanOutput }
+        stderr: StdioCollector { id: wallpaperEngineScanError }
+        onExited: (exitCode, exitStatus) => {
+            if (exitCode !== 0) {
+                console.warn("[Wallpapers] Failed to scan Wallpaper Engine projects:", wallpaperEngineScanError.text.trim())
+                return
+            }
+            try {
+                root.wallpaperEngineItems = JSON.parse(wallpaperEngineScanOutput.text)
+                if (root.wallpaperEngineItems.length > 0) {
+                    root.wallpaperEngineDirectory = FileUtils.parentDirectory(root.wallpaperEngineItems[0].filePath)
+                    root.browsingWallpaperEngine = true
+                    root.thumbnailGenerationProgress = 1
+                }
+            } catch (error) {
+                console.warn("[Wallpapers] Invalid Wallpaper Engine scan output:", error)
+            }
         }
     }
 

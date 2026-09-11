@@ -9,12 +9,19 @@ import QtQuick.Layouts
 import Qt5Compat.GraphicalEffects
 import Quickshell
 import Quickshell.Io
+import Quickshell.Hyprland
 
 MouseArea {
     id: root
     property int columns: 4
     property real previewCellAspectRatio: 4 / 3
     property bool useDarkMode: Appearance.m3colors.darkmode
+    property string targetMonitor: ""
+    property string selectedMonitor: targetMonitor
+    readonly property list<var> monitorOptions: [
+        { name: Translation.tr("All displays"), value: "", icon: "select_all" },
+        ...HyprlandData.monitors.map(monitor => ({ name: monitor.name, value: monitor.name, icon: "monitor" }))
+    ]
 
     function updateThumbnails() {
         const totalImageMargin = (Appearance.sizes.wallpaperSelectorItemMargins + Appearance.sizes.wallpaperSelectorItemPadding) * 2;
@@ -42,7 +49,7 @@ MouseArea {
 
     function selectWallpaperPath(filePath) {
         if (filePath && filePath.length > 0) {
-            Wallpapers.select(filePath, root.useDarkMode);
+            Wallpapers.select(filePath, root.useDarkMode, root.selectedMonitor);
             filterField.text = "";
         }
     }
@@ -161,7 +168,7 @@ MouseArea {
                         // Quick dirs
                         Layout.fillHeight: true
                         Layout.margins: 4
-                        implicitWidth: 140
+                        implicitWidth: 180
                         clip: true
                         model: [
                             {
@@ -199,6 +206,11 @@ MouseArea {
                                 name: "Wallpapers",
                                 path: `${Directories.pictures}/Wallpapers`
                             },
+                            {
+                                icon: "animated_images",
+                                name: "Wallpaper Engine",
+                                path: "WALLPAPER_ENGINE"
+                            },
                             ...(Config.options.policies.weeb === 1 ? [
                                     {
                                         icon: "favorite",
@@ -213,9 +225,17 @@ MouseArea {
                                 left: parent.left
                                 right: parent.right
                             }
-                            onClicked: Wallpapers.setDirectory(quickDirButton.modelData.path)
+                            onClicked: {
+                                if (quickDirButton.modelData.path === "WALLPAPER_ENGINE")
+                                    Wallpapers.openWallpaperEngineLibrary()
+                                else
+                                    Wallpapers.setDirectory(quickDirButton.modelData.path)
+                            }
                             enabled: modelData.icon.length > 0
-                            toggled: Wallpapers.directory === Qt.resolvedUrl(modelData.path)
+                            toggled: modelData.path === "WALLPAPER_ENGINE"
+                                ? Wallpapers.browsingWallpaperEngine
+                                : !Wallpapers.browsingWallpaperEngine
+                                    && Wallpapers.directory === Qt.resolvedUrl(modelData.path)
                             colBackgroundToggled: Appearance.colors.colSecondaryContainer
                             colBackgroundToggledHover: Appearance.colors.colSecondaryContainerHover
                             colRippleToggled: Appearance.colors.colSecondaryContainerActive
@@ -251,7 +271,9 @@ MouseArea {
                     Layout.margins: 4
                     Layout.fillWidth: true
                     Layout.fillHeight: false
-                    directory: Wallpapers.effectiveDirectory
+                    directory: Wallpapers.browsingWallpaperEngine
+                        ? Wallpapers.wallpaperEngineDirectory
+                        : Wallpapers.effectiveDirectory
                     onNavigateToDirectory: path => {
                         Wallpapers.setDirectory(path.length == 0 ? "/" : path);
                     }
@@ -283,7 +305,7 @@ MouseArea {
 
                     GridView {
                         id: grid
-                        visible: Wallpapers.folderModel.count > 0
+                        visible: count > 0
 
                         readonly property int columns: root.columns
                         readonly property int rows: Math.max(1, Math.ceil(count / columns))
@@ -304,16 +326,20 @@ MouseArea {
                         }
 
                         function moveSelection(delta) {
-                            currentIndex = Math.max(0, Math.min(grid.model.count - 1, currentIndex + delta));
+                            currentIndex = Math.max(0, Math.min(grid.count - 1, currentIndex + delta));
                             positionViewAtIndex(currentIndex, GridView.Contain);
                         }
 
                         function activateCurrent() {
-                            const filePath = grid.model.get(currentIndex, "filePath");
+                            const filePath = Wallpapers.browsingWallpaperEngine
+                                ? grid.model[currentIndex].filePath
+                                : grid.model.get(currentIndex, "filePath");
                             root.selectWallpaperPath(filePath);
                         }
 
-                        model: Wallpapers.folderModel
+                        model: Wallpapers.browsingWallpaperEngine
+                            ? Wallpapers.filteredWallpaperEngineItems
+                            : Wallpapers.folderModel
                         onModelChanged: currentIndex = 0
                         delegate: WallpaperDirectoryItem {
                             required property var modelData
@@ -321,8 +347,9 @@ MouseArea {
                             fileModelData: modelData
                             width: grid.cellWidth
                             height: grid.cellHeight
-                            colBackground: (index === grid?.currentIndex || containsMouse) ? Appearance.colors.colPrimary : (fileModelData.filePath === Config.options.background.wallpaperPath) ? Appearance.colors.colSecondaryContainer : ColorUtils.transparentize(Appearance.colors.colPrimaryContainer)
-                            colText: (index === grid.currentIndex || containsMouse) ? Appearance.colors.colOnPrimary : (fileModelData.filePath === Config.options.background.wallpaperPath) ? Appearance.colors.colOnSecondaryContainer : Appearance.colors.colOnLayer0
+                            readonly property bool selected: fileModelData.filePath === Wallpapers.currentWallpaperPath(root.selectedMonitor)
+                            colBackground: (index === grid?.currentIndex || containsMouse) ? Appearance.colors.colPrimary : selected ? Appearance.colors.colSecondaryContainer : ColorUtils.transparentize(Appearance.colors.colPrimaryContainer)
+                            colText: (index === grid.currentIndex || containsMouse) ? Appearance.colors.colOnPrimary : selected ? Appearance.colors.colOnSecondaryContainer : Appearance.colors.colOnLayer0
 
                             onEntered: {
                                 grid.currentIndex = index;
@@ -353,14 +380,26 @@ MouseArea {
                         spacing: 6
                         Toolbar {
 
+                            StyledComboBox {
+                                implicitWidth: 180
+                                model: root.monitorOptions
+                                textRole: "name"
+                                buttonIcon: "monitor"
+                                Component.onCompleted: {
+                                    const index = root.monitorOptions.findIndex(item => item.value === root.targetMonitor)
+                                    currentIndex = index >= 0 ? index : 0
+                                }
+                                onActivated: index => root.selectedMonitor = root.monitorOptions[index].value
+                            }
+
                             IconToolbarButton {
                                 implicitWidth: height
                                 onClicked: {
-                                    Wallpapers.openFallbackPicker(root.useDarkMode);
+                                    Wallpapers.openFallbackPicker(root.useDarkMode, root.selectedMonitor);
                                     GlobalStates.wallpaperSelectorOpen = false;
                                 }
                                 altAction: () => {
-                                    Wallpapers.openFallbackPicker(root.useDarkMode);
+                                    Wallpapers.openFallbackPicker(root.useDarkMode, root.selectedMonitor);
                                     GlobalStates.wallpaperSelectorOpen = false;
                                     Config.options.wallpaperSelector.useSystemFileDialog = true;
                                 }
@@ -373,7 +412,7 @@ MouseArea {
                             IconToolbarButton {
                                 implicitWidth: height
                                 onClicked: {
-                                    Wallpapers.randomFromCurrentFolder();
+                                    Wallpapers.randomFromCurrentFolder(root.useDarkMode, root.selectedMonitor);
                                 }
                                 text: "ifl"
                                 StyledToolTip {

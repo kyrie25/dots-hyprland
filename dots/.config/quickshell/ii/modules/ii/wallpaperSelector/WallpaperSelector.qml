@@ -55,6 +55,7 @@ Scope {
 
             WallpaperSelectorContent {
                 id: content
+                targetMonitor: panelWindow.monitor?.name ?? ""
                 anchors {
                     fill: parent
                 }
@@ -70,11 +71,20 @@ Scope {
         GlobalStates.wallpaperSelectorOpen = !GlobalStates.wallpaperSelectorOpen
     }
 
+    function openWallpaperEngineSelector() {
+        Wallpapers.openWallpaperEngineLibrary();
+        GlobalStates.wallpaperSelectorOpen = true;
+    }
+
     IpcHandler {
         target: "wallpaperSelector"
 
         function toggle(): void {
             root.toggleWallpaperSelector();
+        }
+
+        function openWallpaperEngine(): void {
+            root.openWallpaperEngineSelector();
         }
 
         function random(): void {
