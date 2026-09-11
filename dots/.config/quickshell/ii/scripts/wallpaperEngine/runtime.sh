@@ -10,12 +10,14 @@ HELPER="$SCRIPT_DIR/wallpaper-engine.py"
 LOG_DIR="$XDG_CACHE_HOME/linux-wallpaperengine"
 STATE_FILE="$LOG_DIR/state"
 MONITOR_STATE_FILE="$LOG_DIR/states.json"
+STARTUP_GRACE_SECONDS=3
 VIDEO_OPTS="no-audio loop hwdec=auto scale=bilinear interpolation=no video-sync=display-resample panscan=1.0 video-scale-x=1.0 video-scale-y=1.0 video-align-x=0.5 video-align-y=0.5 load-scripts=no"
 UNIT_PREFIX="illogical-impulse-wallpaper"
 ENGINE_PATTERN='^(\./|/[^ ]*/)?linux-wallpaperengine( |$)'
 declare -A renderer_pids=()
 declare -A configured_monitors=()
 declare -A renderer_states=()
+declare -A renderer_grace_deadlines=()
 
 write_state() {
     mkdir -p "$LOG_DIR"
@@ -132,6 +134,7 @@ stop_children() {
     kill -TERM "${pids[@]}" 2>/dev/null || true
     wait "${pids[@]}" 2>/dev/null || true
     renderer_pids=()
+    renderer_grace_deadlines=()
 }
 
 stop_renderer() {
@@ -142,6 +145,7 @@ stop_renderer() {
     kill -TERM "$pid" 2>/dev/null || true
     wait "$pid" 2>/dev/null || true
     unset 'renderer_pids[$monitor]'
+    unset 'renderer_grace_deadlines[$monitor]'
 }
 
 renderer_alive() {
@@ -260,6 +264,7 @@ start_renderers() {
                 renderer_pids["$monitor"]="$!"
                 configured_monitors["$monitor"]=1
                 renderer_states["$monitor"]=running
+                renderer_grace_deadlines["$monitor"]=$((SECONDS + STARTUP_GRACE_SECONDS))
                 started=true
                 ;;
             video)
@@ -268,6 +273,7 @@ start_renderers() {
                 renderer_pids["$monitor"]="$!"
                 configured_monitors["$monitor"]=1
                 renderer_states["$monitor"]=running
+                renderer_grace_deadlines["$monitor"]=$((SECONDS + STARTUP_GRACE_SECONDS))
                 started=true
                 ;;
         esac
@@ -322,6 +328,13 @@ desired_action() {
     local fullscreen_action="$5"
     local maximized_action="$6"
     local audio_action="$7"
+    local allow_suspend="${8:-true}"
+    if [[ "$allow_suspend" != true ]]; then
+        [[ "$fullscreen_action" == pause || "$fullscreen_action" == stop ]] && fullscreen_action=keep
+        [[ "$maximized_action" == pause || "$maximized_action" == stop ]] && maximized_action=keep
+        [[ "$audio_action" == pause || "$audio_action" == stop ]] && audio_action=keep
+        manual_pause=false
+    fi
     local -a actions=()
     [[ "$fullscreen" == true ]] && actions+=("$fullscreen_action")
     [[ "$maximized" == true ]] && actions+=("$maximized_action")
@@ -385,17 +398,17 @@ run_renderers() {
             maximized_by_monitor["$state_monitor"]="$maximized"
         done < <(window_states)
 
-        local monitor action last_action
+        local monitor raw_action action last_action allow_suspend deadline
         while IFS= read -r monitor; do
             [[ -n "$monitor" ]] || continue
-            action="$(desired_action \
+            raw_action="$(desired_action \
                 "${fullscreen_by_monitor[$monitor]:-false}" \
                 "${maximized_by_monitor[$monitor]:-false}" \
                 "$audio_playing" "$manual_pause" \
-                "$fullscreen_action" "$maximized_action" "$audio_action")"
+                "$fullscreen_action" "$maximized_action" "$audio_action" true)"
             last_action="${last_actions[$monitor]:-}"
 
-            if [[ "$action" != stop ]] && ! renderer_alive "$monitor"; then
+            if [[ "$raw_action" != stop ]] && ! renderer_alive "$monitor"; then
                 stop_renderer "$monitor"
                 if ! start_renderers "$monitor"; then
                     renderer_states["$monitor"]=stopped
@@ -404,6 +417,17 @@ run_renderers() {
                 fi
                 last_action=""
             fi
+
+            allow_suspend=true
+            deadline="${renderer_grace_deadlines[$monitor]:-0}"
+            if renderer_alive "$monitor" && ((SECONDS < deadline)); then
+                allow_suspend=false
+            fi
+            action="$(desired_action \
+                "${fullscreen_by_monitor[$monitor]:-false}" \
+                "${maximized_by_monitor[$monitor]:-false}" \
+                "$audio_playing" "$manual_pause" \
+                "$fullscreen_action" "$maximized_action" "$audio_action" "$allow_suspend")"
 
             case "$action" in
                 stop)
