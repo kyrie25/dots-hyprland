@@ -359,8 +359,11 @@ set_renderer_audio_mute() {
     local index
     while IFS= read -r index; do
         [[ -n "$index" ]] && pactl set-sink-input-mute "$index" "$muted" >/dev/null 2>&1 || true
-    done < <(pactl -f json list sink-inputs 2>/dev/null | jq -r --arg app "linux-wallpaperengine:$monitor" '
-        .[] | select((.properties."application.name" // "") == $app) | .index
+    done < <(pactl -f json list sink-inputs 2>/dev/null | jq -r --arg stream "linux-wallpaperengine:$monitor" '
+        .[]
+        | select((.properties."application.name" // "") | startswith("linux-wallpaperengine"))
+        | select((.properties."media.name" // "") == $stream)
+        | .index
     ')
 }
 
