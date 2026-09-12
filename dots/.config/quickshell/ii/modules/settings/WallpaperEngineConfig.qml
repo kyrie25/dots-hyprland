@@ -340,6 +340,17 @@ ContentSection {
                         color: Appearance.colors.colSubtext
                     }
 
+                    ConfigSwitch {
+                        Layout.fillWidth: true
+                        buttonIcon: root.selectedWallpaper.muted ? "volume_off" : "volume_up"
+                        text: Translation.tr("Mute audio on %1").arg(root.selectedMonitor)
+                        checked: root.selectedWallpaper.muted
+                        onCheckedChanged: {
+                            if (checked !== root.selectedWallpaper.muted)
+                                Wallpapers.updateMonitorWallpaperSetting(root.selectedMonitor, "muted", checked)
+                        }
+                    }
+
                     ContentSubsection {
                         title: Translation.tr("Scaling")
 

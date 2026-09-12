@@ -64,6 +64,7 @@ Singleton {
             scaling: "fill",
             alignX: "center",
             alignY: "center",
+            muted: false,
             properties: ({})
         }
         return Object.assign(defaults, entry || {})

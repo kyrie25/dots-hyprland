@@ -18,6 +18,7 @@ declare -A renderer_pids=()
 declare -A configured_monitors=()
 declare -A renderer_states=()
 declare -A renderer_grace_deadlines=()
+declare -A persistent_mutes=()
 
 write_state() {
     mkdir -p "$LOG_DIR"
@@ -59,6 +60,30 @@ write_monitor_states() {
     write_state "${aggregate:-stopped}"
 }
 
+supervisor_pids() {
+    local cmdline pid
+    local -a argv=()
+    for cmdline in /proc/[0-9]*/cmdline; do
+        argv=()
+        { mapfile -d '' -t argv <"$cmdline"; } 2>/dev/null || continue
+        [[ ${#argv[@]} -eq 3 ]] || continue
+        [[ "${argv[0]##*/}" == bash && "${argv[1]}" == "$SCRIPT_DIR/runtime.sh" && "${argv[2]}" == run ]] || continue
+        pid="${cmdline#/proc/}"
+        printf '%s\n' "${pid%/cmdline}"
+    done
+}
+
+stop_supervisors() {
+    local -a pids=()
+    mapfile -t pids < <(supervisor_pids)
+    [[ ${#pids[@]} -gt 0 ]] || return
+    kill -TERM "${pids[@]}" 2>/dev/null || true
+    for _ in {1..40}; do
+        [[ -z "$(supervisor_pids)" ]] && return
+        sleep 0.05
+    done
+}
+
 stop_renderers() {
     local -a units=()
     if command -v systemctl >/dev/null 2>&1; then
@@ -71,6 +96,7 @@ stop_renderers() {
         fi
     fi
 
+    stop_supervisors
     pkill -f "$ENGINE_PATTERN" 2>/dev/null || true
     pkill -x mpvpaper 2>/dev/null || true
     for _ in {1..40}; do
@@ -203,18 +229,13 @@ start_renderers() {
         --fps "$fps" --anti-aliasing "$anti_aliasing" --no-fullscreen-pause --noautomute
         --layer background --assets-dir "$assets"
     )
-    if [[ "$muted" == true ]]; then
-        common_args+=(--silent)
-    else
-        common_args+=(--volume "$volume")
-    fi
     [[ "$audio_processing" == true ]] || common_args+=(--no-audio-processing)
     [[ "$particles" == true ]] || common_args+=(--disable-particles)
     [[ "$mouse_input" == true ]] || common_args+=(--disable-mouse)
     [[ "$parallax" == true ]] || common_args+=(--disable-parallax)
 
     local started=false
-    local monitor entry path type configured_type scaling align_x align_y properties safe_monitor
+    local monitor entry path type configured_type scaling align_x align_y properties safe_monitor monitor_muted audio_disabled
     while IFS= read -r monitor; do
         [[ -n "$monitor" ]] || continue
         [[ -z "$only_monitor" || "$monitor" == "$only_monitor" ]] || continue
@@ -226,6 +247,7 @@ start_renderers() {
                 scaling: ($entry.scaling // "fill"),
                 alignX: ($entry.alignX // "center"),
                 alignY: ($entry.alignY // "center"),
+                muted: ($entry.muted // false),
                 properties: ($entry.properties // {})
             }
         ' "$CONFIG_FILE")"
@@ -240,9 +262,14 @@ start_renderers() {
                 scaling="$(jq -r '.scaling' <<<"$entry")"
                 align_x="$(jq -r '.alignX' <<<"$entry")"
                 align_y="$(jq -r '.alignY' <<<"$entry")"
+                monitor_muted="$(jq -r '.muted' <<<"$entry")"
                 properties="$(jq -c '.properties' <<<"$entry")"
                 local -a overrides=()
                 mapfile -d '' -t overrides < <(property_args "$properties")
+                audio_disabled=false
+                [[ "$muted" == true || "$monitor_muted" == true ]] && audio_disabled=true
+                local -a audio_args=(--volume "$volume")
+                [[ "$audio_disabled" == true ]] && audio_args=(--silent)
                 local -a engine_env=(
                     __GL_THREADED_OPTIMIZATIONS=0
                     SDL_AUDIO_DEVICE_APP_NAME="linux-wallpaperengine:$monitor"
@@ -254,24 +281,32 @@ start_renderers() {
                 safe_monitor="${monitor//[^A-Za-z0-9_.-]/_}"
                 env -u __GLX_VENDOR_LIBRARY_NAME "${engine_env[@]}" "$engine" \
                     "${common_args[@]}" \
+                    "${audio_args[@]}" \
                     --screen-root "$monitor" \
                     --bg "$path" \
                     --scaling "$scaling" \
                     --align-x "$align_x" \
                     --align-y "$align_y" \
                     "${overrides[@]}" "$path" \
-                    >"$LOG_DIR/runtime-$safe_monitor.log" 2>&1 &
+                    >"$LOG_DIR/runtime-$safe_monitor.log" 2>&1 {supervisor_lock_fd}>&- &
                 renderer_pids["$monitor"]="$!"
                 configured_monitors["$monitor"]=1
-                renderer_states["$monitor"]=running
+                persistent_mutes["$monitor"]="$audio_disabled"
+                if [[ "$audio_disabled" == true ]]; then
+                    renderer_states["$monitor"]=muted
+                else
+                    renderer_states["$monitor"]=running
+                fi
                 renderer_grace_deadlines["$monitor"]=$((SECONDS + STARTUP_GRACE_SECONDS))
                 started=true
                 ;;
             video)
                 command -v mpvpaper >/dev/null 2>&1 || continue
-                mpvpaper -o "$VIDEO_OPTS" "$monitor" "$path" >"$LOG_DIR/mpvpaper-$monitor.log" 2>&1 &
+                mpvpaper -o "$VIDEO_OPTS" "$monitor" "$path" \
+                    >"$LOG_DIR/mpvpaper-$monitor.log" 2>&1 {supervisor_lock_fd}>&- &
                 renderer_pids["$monitor"]="$!"
                 configured_monitors["$monitor"]=1
+                persistent_mutes["$monitor"]=false
                 renderer_states["$monitor"]=running
                 renderer_grace_deadlines["$monitor"]=$((SECONDS + STARTUP_GRACE_SECONDS))
                 started=true
@@ -328,7 +363,8 @@ desired_action() {
     local fullscreen_action="$5"
     local maximized_action="$6"
     local audio_action="$7"
-    local allow_suspend="${8:-true}"
+    local persistent_mute="$8"
+    local allow_suspend="${9:-true}"
     if [[ "$allow_suspend" != true ]]; then
         [[ "$fullscreen_action" == pause || "$fullscreen_action" == stop ]] && fullscreen_action=keep
         [[ "$maximized_action" == pause || "$maximized_action" == stop ]] && maximized_action=keep
@@ -340,6 +376,7 @@ desired_action() {
     [[ "$maximized" == true ]] && actions+=("$maximized_action")
     [[ "$audio_playing" == true ]] && actions+=("$audio_action")
     [[ "$manual_pause" == true ]] && actions+=(pause)
+    [[ "$persistent_mute" == true ]] && actions+=(mute)
 
     local result=keep action
     for action in "${actions[@]}"; do
@@ -370,6 +407,9 @@ set_renderer_audio_mute() {
 run_renderers() {
     [[ -f "$CONFIG_FILE" ]] || return 0
     mkdir -p "$LOG_DIR"
+    local supervisor_lock_fd
+    exec {supervisor_lock_fd}>"$LOG_DIR/supervisor.lock"
+    flock -n "$supervisor_lock_fd" || return 0
     trap 'stop_children; write_state stopped; write_empty_monitor_states' EXIT
     trap 'exit 0' INT TERM
 
@@ -408,7 +448,8 @@ run_renderers() {
                 "${fullscreen_by_monitor[$monitor]:-false}" \
                 "${maximized_by_monitor[$monitor]:-false}" \
                 "$audio_playing" "$manual_pause" \
-                "$fullscreen_action" "$maximized_action" "$audio_action" true)"
+                "$fullscreen_action" "$maximized_action" "$audio_action" \
+                "${persistent_mutes[$monitor]:-false}" true)"
             last_action="${last_actions[$monitor]:-}"
 
             if [[ "$raw_action" != stop ]] && ! renderer_alive "$monitor"; then
@@ -430,7 +471,8 @@ run_renderers() {
                 "${fullscreen_by_monitor[$monitor]:-false}" \
                 "${maximized_by_monitor[$monitor]:-false}" \
                 "$audio_playing" "$manual_pause" \
-                "$fullscreen_action" "$maximized_action" "$audio_action" "$allow_suspend")"
+                "$fullscreen_action" "$maximized_action" "$audio_action" \
+                "${persistent_mutes[$monitor]:-false}" "$allow_suspend")"
 
             case "$action" in
                 stop)
@@ -451,7 +493,7 @@ run_renderers() {
                     ;;
                 keep|*)
                     [[ "$last_action" == pause ]] && signal_renderer "$monitor" CONT
-                    [[ "$last_action" == mute ]] && set_renderer_audio_mute "$monitor" 0
+                    [[ "$last_action" == keep ]] || set_renderer_audio_mute "$monitor" 0
                     renderer_states["$monitor"]=running
                     ;;
             esac
@@ -463,13 +505,17 @@ run_renderers() {
 }
 
 restart_renderers() {
+    mkdir -p "$LOG_DIR"
+    local restart_lock_fd
+    exec {restart_lock_fd}>"$LOG_DIR/restart.lock"
+    flock "$restart_lock_fd"
     stop_renderers
 
     if command -v systemd-run >/dev/null 2>&1 && systemctl --user is-system-running >/dev/null 2>&1; then
         systemd-run --user --quiet --collect --service-type=exec \
-            --unit="$UNIT_PREFIX-$(date +%s%N)" "$SCRIPT_DIR/runtime.sh" run
+            --unit="$UNIT_PREFIX-$(date +%s%N)" "$SCRIPT_DIR/runtime.sh" run {restart_lock_fd}>&-
     else
-        setsid -f "$SCRIPT_DIR/runtime.sh" run
+        setsid -f "$SCRIPT_DIR/runtime.sh" run {restart_lock_fd}>&-
     fi
 }
 
