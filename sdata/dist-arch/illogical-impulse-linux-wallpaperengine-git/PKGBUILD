@@ -1,8 +1,8 @@
 groups=(illogical-impulse)
 pkgname=illogical-impulse-linux-wallpaperengine-git
 _pkgname=linux-wallpaperengine
-_commit=1f86bbf5dfe05556200ccb657844504dcfddb74b
-pkgver=r634.1f86bbf
+_commit=bac8f9a72a55d2f0c5ab8ffe63be0221a876b191
+pkgver=r635.bac8f9a
 pkgrel=1
 pkgdesc='Pinned linux-wallpaperengine fork for illogical-impulse'
 arch=(x86_64)
@@ -10,6 +10,7 @@ url='https://github.com/kyrie25/linux-wallpaperengine'
 license=('GPL-3.0-only')
 depends=(
   at-spi2-core
+  curl
   ffmpeg
   freeglut
   glew
