@@ -180,6 +180,11 @@ renderer_alive() {
     [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null
 }
 
+renderer_started() {
+    sleep 0.1
+    renderer_alive "$1"
+}
+
 signal_renderer() {
     local monitor="$1"
     local signal="$2"
@@ -275,6 +280,12 @@ start_renderers() {
                     SDL_AUDIO_DEVICE_APP_NAME="linux-wallpaperengine:$monitor"
                     SDL_AUDIO_DEVICE_STREAM_NAME="linux-wallpaperengine:$monitor"
                 )
+                if [[ "$engine" == "$HOME/.local/bin/linux-wallpaperengine" \
+                    && -d "$HOME/.local/opt/linux-wallpaperengine/lib" ]]; then
+                    engine_env+=(
+                        LD_LIBRARY_PATH="$HOME/.local/opt/linux-wallpaperengine:$HOME/.local/opt/linux-wallpaperengine/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+                    )
+                fi
                 if [[ "${AQ_DRM_DEVICES:-}" == *nvidia*:*intel* ]]; then
                     engine_env+=(DRI_PRIME=1 LIBVA_DRIVER_NAME=iHD)
                 fi
@@ -292,6 +303,11 @@ start_renderers() {
                 renderer_pids["$monitor"]="$!"
                 configured_monitors["$monitor"]=1
                 persistent_mutes["$monitor"]="$audio_disabled"
+                if ! renderer_started "$monitor"; then
+                    stop_renderer "$monitor"
+                    renderer_states["$monitor"]=stopped
+                    continue
+                fi
                 if [[ "$audio_disabled" == true ]]; then
                     renderer_states["$monitor"]=muted
                 else
@@ -307,6 +323,11 @@ start_renderers() {
                 renderer_pids["$monitor"]="$!"
                 configured_monitors["$monitor"]=1
                 persistent_mutes["$monitor"]=false
+                if ! renderer_started "$monitor"; then
+                    stop_renderer "$monitor"
+                    renderer_states["$monitor"]=stopped
+                    continue
+                fi
                 renderer_states["$monitor"]=running
                 renderer_grace_deadlines["$monitor"]=$((SECONDS + STARTUP_GRACE_SECONDS))
                 started=true
