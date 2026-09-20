@@ -11,9 +11,8 @@ import qs.services.ai
 
 /**
  * Basic service to handle LLM chats. Supports Google's and OpenAI's API formats.
- * Supports Gemini and OpenAI models.
- * Limitations:
- * - For now functions only work with Gemini API format
+ * Supports Gemini and OpenAI models, including local Ollama and OpenRouter models.
+ * Both API formats support function calling.
  */
 Singleton {
     id: root
@@ -137,7 +136,10 @@ Singleton {
                     "function": {
                         "name": "get_shell_config",
                         "description": "Get the desktop shell config file contents",
-                        "parameters": {}
+                        "parameters": {
+                            "type": "object",
+                            "properties": {}
+                        }
                     },
                 },
                 {
@@ -189,7 +191,10 @@ Singleton {
                     "function": {
                         "name": "get_shell_config",
                         "description": "Get the desktop shell config file contents",
-                        "parameters": {}
+                        "parameters": {
+                            "type": "object",
+                            "properties": {}
+                        }
                     },
                 },
                 {
