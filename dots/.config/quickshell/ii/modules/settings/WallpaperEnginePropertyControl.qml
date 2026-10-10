@@ -72,7 +72,6 @@ RowLayout {
 
         ConfigSwitch {
             text: root.definition.label
-            buttonIcon: "toggle_on"
             checked: root.boolValue(root.effectiveValue)
             onCheckedChanged: {
                 if (checked !== root.boolValue(root.effectiveValue))
