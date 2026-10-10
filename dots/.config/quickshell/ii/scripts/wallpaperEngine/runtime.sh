@@ -360,11 +360,6 @@ start_renderers() {
                 fi
                 if [[ "${AQ_DRM_DEVICES:-}" == *nvidia*:*intel* ]]; then
                     engine_env+=(DRI_PRIME=1 LIBVA_DRIVER_NAME=iHD)
-                    # DRI_PRIME does not stop GLVND from selecting NVIDIA's Wayland EGL vendor.
-                    if [[ -z "${__EGL_VENDOR_LIBRARY_FILENAMES:-}" \
-                        && -r /usr/share/glvnd/egl_vendor.d/50_mesa.json ]]; then
-                        engine_env+=(__EGL_VENDOR_LIBRARY_FILENAMES=/usr/share/glvnd/egl_vendor.d/50_mesa.json)
-                    fi
                 fi
                 safe_monitor="${monitor//[^A-Za-z0-9_.-]/_}"
                 setsid env -u __GLX_VENDOR_LIBRARY_NAME "${engine_env[@]}" "$engine" \

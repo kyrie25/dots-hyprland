@@ -99,9 +99,8 @@ run_renderers
             initial = starts()
             time.sleep(4)
             vendors = (root / 'egl-vendors').read_text().splitlines()
-            expected_vendor = '/test/explicit-egl-vendor.json' if live else '/usr/share/glvnd/egl_vendor.d/50_mesa.json'
-            if live or Path(expected_vendor).is_file():
-                assert vendors == [expected_vendor, expected_vendor], vendors
+            expected_vendor = '/test/explicit-egl-vendor.json' if live else 'unset'
+            assert vendors == [expected_vendor, expected_vendor], vendors
             data['background']['wallpaperEngine'].update(fps=60, volume=25)
             save(config, data)
             if live:
