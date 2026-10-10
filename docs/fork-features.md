@@ -32,6 +32,10 @@ features and changes already merged into upstream are not claimed as additions.
   processing, particles, mouse input, and parallax. The settings layout gives
   controls room, keeps the Light/Dark selector visible, and aligns behavior
   dropdowns consistently.
+- Desktop left-button presses and releases are forwarded per monitor to the
+  renderer, enabling wallpaper clicks and dragging beneath Quickshell. Held
+  presses are refreshed and expire if the shell disappears; disabling mouse
+  input stops forwarding. The desktop right-click menu remains available.
 - Runtime status is visible in settings. FPS, volume/mute, scaling, and alignment
   use live control files with the supported renderer; changes requiring a reload
   restart the affected outputs. These controls do not imply separate per-monitor
@@ -73,8 +77,9 @@ effective. Overlapping policies resolve to the strongest applicable action.
 - The runtime handles renderer crashes, changed output configurations, and
   disconnected/reconnected outputs. Library-update recovery addresses a
   renderer failing to start after system upgrades.
-- The existing Intel offload condition selects Mesa EGL while preserving an
-  explicit vendor override. This is not a guarantee of every NVIDIA/VRAM setup.
+- EGL vendor selection follows GLVND or the caller's explicit override. Forcing
+  Mesa on the tested hybrid NVIDIA/Intel setup produced black compositor output
+  with both the old and current renderer, despite successful internal rendering.
 - The renderer is a separate fork, tracked as a pinned submodule and packaged
   as `illogical-impulse-linux-wallpaperengine-git`. The Arch build disables X11
   discovery, verifies renderer/nested dependency revisions, excludes tests from
@@ -197,12 +202,14 @@ Do not substitute the ordinary AUR renderer and expect these fork-specific fixes
 
 ## Verification and compatibility limits
 
-The published renderer implementation passed 1,551 assertions in 99 cases and
-isolated Wayland tests on two outputs. The 17 scripts in
+The published renderer implementation passed 1,557 assertions in 100 cases and
+isolated Wayland tests on two outputs. The 19 scripts in
 [`tests/wallpaperengine`](../tests/wallpaperengine) cover render/media/native-script
 paths, per-output policy, startup grace, crash/reconnect handling, and scene/web
-audio. They create temporary fixtures; consult each script's prerequisites before
-running tests in a live Wayland session.
+audio and actual compositor presentation using `grim`. They create temporary
+fixtures; consult each script's prerequisites before
+running tests in a live Wayland session. The presentation check briefly covers
+its selected monitor with a temporary top-layer test wallpaper.
 
 Widget profile tests cover initial migration, independent persistence across
 restart, and component loading. Peripheral tests cover source filtering,

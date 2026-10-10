@@ -418,6 +418,7 @@ Variants {
             }
 
             WidgetCanvas {
+                acceptedButtons: Qt.NoButton
                 property var widgetOptions: WidgetProfiles.forMonitor(bgRoot.screen.name)
                 id: widgetCanvas
                 z: 3
@@ -584,10 +585,38 @@ Variants {
             }
 
             MouseArea {
+                id: desktopMouse
                 anchors.fill: parent
                 z: -2
-                acceptedButtons: Qt.RightButton
+                readonly property bool forwardWallpaperInput: bgRoot.wallpaperIsExternal
+                    && Config.options.background.wallpaperEngine.mouseInput
+                    && !GlobalStates.screenLocked
+                acceptedButtons: Qt.RightButton | (forwardWallpaperInput ? Qt.LeftButton : Qt.NoButton)
+                function writeWallpaperButton(down) {
+                    wallpaperInput.setText(JSON.stringify({ leftDown: down, timestamp: Date.now() }))
+                }
+                onPressed: mouse => {
+                    if (mouse.button === Qt.LeftButton) writeWallpaperButton(true)
+                }
+                onReleased: mouse => {
+                    if (mouse.button === Qt.LeftButton) writeWallpaperButton(false)
+                }
+                onCanceled: if (forwardWallpaperInput) writeWallpaperButton(false)
+                onForwardWallpaperInputChanged: if (!forwardWallpaperInput) writeWallpaperButton(false)
+                property FileView inputFile: FileView {
+                    id: wallpaperInput
+                    path: `${CF.FileUtils.trimFileProtocol(Directories.genericCache)}/linux-wallpaperengine/input-${bgRoot.screen.name.replace(/[^A-Za-z0-9_.-]/g, "_")}.json`
+                    atomicWrites: true
+                }
+                property Timer buttonHeartbeat: Timer {
+                    interval: 500
+                    repeat: true
+                    running: desktopMouse.forwardWallpaperInput && desktopMouse.pressed
+                        && (desktopMouse.pressedButtons & Qt.LeftButton)
+                    onTriggered: desktopMouse.writeWallpaperButton(true)
+                }
                 onClicked: mouse => {
+                    if (mouse.button !== Qt.RightButton) return
                     GlobalStates.desktopMenuScreen = bgRoot.screen
                     GlobalStates.desktopMenuX = mouse.x
                     GlobalStates.desktopMenuY = mouse.y

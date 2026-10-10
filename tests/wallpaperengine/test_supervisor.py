@@ -20,7 +20,7 @@ def run(live):
         helper = root / 'helper.py'
         engine.write_text('''#!/bin/bash
 if [[ "$1" == --help ]]; then
-    [[ "$TEST_LIVE" == true ]] && echo --control-file
+    [[ "$TEST_LIVE" == true ]] && echo '--control-file --input-file'
     exit 0
 fi
 printf '%s\\n' "$BASHPID $*" >> "$TEST_DIR/starts"
@@ -97,6 +97,14 @@ run_renderers
         try:
             until(lambda: len(starts()) == 2, 'initial outputs')
             initial = starts()
+            lines = (root / 'starts').read_text().splitlines()
+            if live:
+                input_paths = [Path(line.split()[line.split().index('--input-file') + 1]) for line in lines]
+                assert len(set(input_paths)) == 2, input_paths
+                assert all(json.loads(path.read_text())['leftDown'] is False for path in input_paths)
+                assert all('--control-file' in line for line in lines), lines
+            else:
+                assert all('--input-file' not in line for line in lines), lines
             time.sleep(4)
             vendors = (root / 'egl-vendors').read_text().splitlines()
             expected_vendor = '/test/explicit-egl-vendor.json' if live else 'unset'

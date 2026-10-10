@@ -22,6 +22,7 @@ declare -A persistent_mutes=()
 declare -A renderer_signatures=()
 declare -A renderer_control_files=()
 engine_live_control=false
+engine_forwarded_input=false
 
 write_state() {
     mkdir -p "$LOG_DIR"
@@ -287,7 +288,9 @@ start_renderers() {
     local assets=""
     engine="$(find_engine 2>/dev/null || true)"
     engine_live_control=false
+    engine_forwarded_input=false
     [[ -n "$engine" ]] && "$engine" --help 2>&1 | grep -q -- '--control-file' && engine_live_control=true
+    [[ -n "$engine" ]] && "$engine" --help 2>&1 | grep -q -- '--input-file' && engine_forwarded_input=true
     assets="$(python3 "$HELPER" locate assets 2>/dev/null || true)"
     mkdir -p "$LOG_DIR"
 
@@ -339,9 +342,13 @@ start_renderers() {
                 [[ "$audio_disabled" == true ]] && audio_args=(--silent)
                 local -a control_args=()
                 safe_monitor="${monitor//[^A-Za-z0-9_.-]/_}"
+                if [[ "$engine_forwarded_input" == true ]]; then
+                    printf '{"leftDown":false}\n' >"$LOG_DIR/input-$safe_monitor.json"
+                    control_args+=(--input-file "$LOG_DIR/input-$safe_monitor.json")
+                fi
                 if [[ "$engine_live_control" == true ]]; then
                     renderer_control_files["$monitor"]="$LOG_DIR/control-$safe_monitor.json"
-                    control_args=(--control-file "${renderer_control_files[$monitor]}")
+                    control_args+=(--control-file "${renderer_control_files[$monitor]}")
                     # Keep audio decoding available so mute can be reversed without reloading.
                     [[ "$audio_disabled" == true ]] && audio_args=(--volume 0)
                     write_renderer_control "$monitor" "$entry" "$settings"
