@@ -12,6 +12,24 @@
 
 </div>
 
+## This fork's highlights
+
+This is [kyrie25's fork](https://github.com/kyrie25/dots-hyprland) of end-4's
+illogical-impulse. In addition to the upstream shell, it includes:
+
+- **Wallpaper Engine on Wayland**: Quickshell project/property controls, independent monitor wallpapers, crop alignment and mute, live playback settings, and monitor-local fullscreen/tiled behavior with global other-app audio rules.
+- **Desktop customization**: persistent per-monitor widget profiles, draggable widgets with alignment guides, a desktop context menu, Pixel Clock, expanded weather, media/lyrics, notes, world clocks, and an audio visualizer.
+- **Peripheral batteries**: a desktop card and bar indicators sharing Bluetooth, OpenRazer, and UPower readings.
+- **Shell improvements**: dock context menus and pinned-app reordering, VPN/WireGuard controls, music-recognition cover notifications, and OpenAI-compatible tool-call follow-ups.
+- **Reliability fixes**: wallpaper startup/recovery and audio ownership, dock preview/animation fixes, serialized network refreshes, and debounced window-title updates.
+
+See the [complete feature and fix catalog](../docs/fork-features.md) for upstream
+comparison revisions, attribution, verification, and compatibility limits.
+Use the [fork installation instructions](../docs/fork-features.md#installing-this-fork)
+to get these additions; the upstream download command below installs end-4's version.
+Wallpaper Engine rendering uses the [separate pinned renderer fork](https://github.com/kyrie25/linux-wallpaperengine/tree/ii-puppet-multimonitor),
+whose Workshop compatibility remains partial.
+
 <div align="center">
     <h2>• overview •</h2>
     <h3></h3>
