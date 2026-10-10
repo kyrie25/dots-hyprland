@@ -1,8 +1,8 @@
 groups=(illogical-impulse)
 pkgname=illogical-impulse-linux-wallpaperengine-git
 _pkgname=linux-wallpaperengine
-_commit=93ddbeb3e5eba2a47cdc0abce69033f9362e38de
-pkgver=r643.93ddbeb
+_commit=e93bb91c18bbadf4d45a9f9c35a07b775ab03ee2
+pkgver=r647.e93bb91
 pkgrel=1
 pkgdesc='Pinned linux-wallpaperengine fork for illogical-impulse'
 arch=(x86_64)
@@ -12,8 +12,12 @@ depends=(
   at-spi2-core
   curl
   ffmpeg
+  fontconfig
+  freetype2
   freeglut
   glew
+  harfbuzz
+  libwebp
   glfw
   libcups
   libpulse
@@ -23,14 +27,13 @@ depends=(
   mpv
   nspr
   nss
+  sdl2
 )
 makedepends=(
   cmake
   git
   glm
-  sdl2
   wayland-protocols
-  xorg-xrandr
 )
 provides=(linux-wallpaperengine linux-wallpaperengine-git)
 conflicts=(linux-wallpaperengine linux-wallpaperengine-git)
@@ -55,6 +58,8 @@ prepare() {
 build() {
   cmake -B "$srcdir/build" -S "$startdir/$_pkgname" \
     -DCMAKE_BUILD_TYPE=Release \
+    -DBUILD_TESTING=OFF \
+    -DCMAKE_DISABLE_FIND_PACKAGE_X11=ON \
     -DCMAKE_INSTALL_PREFIX="/opt/$_pkgname" \
     -Wno-dev \
     -DCMAKE_CXX_FLAGS="-ffat-lto-objects -Wno-builtin-macro-redefined" \
@@ -74,4 +79,6 @@ exec ./$_pkgname "\$@"
 EOF
   chmod 755 "$pkgdir/usr/bin/$_pkgname"
   install -Dm644 "$startdir/$_pkgname/LICENSE" -t "$pkgdir/usr/share/licenses/$pkgname"
+  install -Dm644 "$startdir/$_pkgname/src/External/msdfgen/LICENSE.txt" \
+    "$pkgdir/usr/share/licenses/$pkgname/msdfgen-LICENSE.txt"
 }
