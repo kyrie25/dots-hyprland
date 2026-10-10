@@ -1,8 +1,8 @@
 groups=(illogical-impulse)
 pkgname=illogical-impulse-linux-wallpaperengine-git
 _pkgname=linux-wallpaperengine
-_commit=64d3a6da830a1a26c005e7af1b05dda5d7484c48
-pkgver=r642.64d3a6d
+_commit=93ddbeb3e5eba2a47cdc0abce69033f9362e38de
+pkgver=r643.93ddbeb
 pkgrel=1
 pkgdesc='Pinned linux-wallpaperengine fork for illogical-impulse'
 arch=(x86_64)
