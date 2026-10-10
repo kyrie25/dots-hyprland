@@ -5,6 +5,7 @@ import qs.modules.common
 import qs.services
 import qs.modules.settings
 import qs.modules.ii.background
+import qs.modules.ii.bar
 import qs.modules.common.widgets
 import qs.modules.ii.mediaControls
 import qs.modules.ii.background.widgets.clock
@@ -23,7 +24,7 @@ ShellRoot {
         interval: 900; running: Config.ready
         onTriggered: {
             const base = Qt.resolvedUrl(".").toString() + "/"
-            const paths = ["modules/settings/BackgroundConfig.qml", "modules/ii/background/Background.qml", "modules/common/widgets/WidgetsSubmenu.qml", "modules/ii/mediaControls/MediaControls.qml"]
+            const paths = ["modules/settings/BackgroundConfig.qml", "modules/ii/background/Background.qml", "modules/common/widgets/WidgetsSubmenu.qml", "modules/ii/mediaControls/MediaControls.qml", "modules/ii/bar/BarContent.qml", "modules/ii/bar/PeripheralBatteryIndicators.qml"]
             for (const path of paths) {
                 const c = Qt.createComponent(base + path)
                 if (c.status !== Component.Ready) throw Error(path + ": " + c.errorString())
@@ -35,7 +36,7 @@ ShellRoot {
                 if (!clock) throw Error("Clock creation failed")
                 checkScope(clock)
             }
-            const widgets = ["clock/ClockWidget", "weather/WeatherWidget", "calendar/CalendarWidget", "worldclock/WorldClockWidget", "images/CustomImage", "media/MediaWidget", "resources/ResourcesWidget", "notes/NotesWidget", "usercard/UserCardWidget", "images/ImageConverterWidget", "visualizer/VisualizerWidget"]
+            const widgets = ["clock/ClockWidget", "weather/WeatherWidget", "calendar/CalendarWidget", "worldclock/WorldClockWidget", "images/CustomImage", "media/MediaWidget", "resources/ResourcesWidget", "peripherals/PeripheralBatteryWidget", "notes/NotesWidget", "usercard/UserCardWidget", "images/ImageConverterWidget", "visualizer/VisualizerWidget"]
             for (const path of widgets) {
                 const c = Qt.createComponent(base + "modules/ii/background/widgets/" + path + ".qml")
                 if (c.status !== Component.Ready) throw Error(path + ": " + c.errorString())

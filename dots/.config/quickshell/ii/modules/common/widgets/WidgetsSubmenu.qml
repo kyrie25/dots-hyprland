@@ -20,6 +20,7 @@ Item {
         { key: "media",       icon: "music_note",         name: Translation.tr("Media") },
         { key: "images",      icon: "photo_library",      name: Translation.tr("Image Converter") },
         { key: "resources",   icon: "monitor_heart",      name: Translation.tr("Resources") },
+        { key: "peripheralBattery", icon: "battery_charging_full", name: Translation.tr("Peripheral batteries") },
         { key: "calendar",    icon: "calendar_month",     name: Translation.tr("Calendar") },
         { key: "worldClock",  icon: "public",             name: Translation.tr("World Clock") },
         { key: "userCard",    icon: "person",             name: Translation.tr("User Card") },

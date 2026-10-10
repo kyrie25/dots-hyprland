@@ -101,6 +101,12 @@ JsonObject {
         property string shape: "Cookie4Sided"
         property real size: 200
     }
+    property JsonObject peripheralBattery: JsonObject {
+        property bool enable: false
+        property string placementStrategy: "free"
+        property real x: 24
+        property real y: 300
+    }
     property JsonObject resources: JsonObject {
         property bool enable: false
         property string placementStrategy: "free"

@@ -20,6 +20,7 @@ import qs.modules.ii.background.widgets.clock
 import qs.modules.ii.background.widgets.images
 import qs.modules.ii.background.widgets.media
 import qs.modules.ii.background.widgets.notes
+import qs.modules.ii.background.widgets.peripherals
 import qs.modules.ii.background.widgets.resources
 import qs.modules.ii.background.widgets.usercard
 import qs.modules.ii.background.widgets.visualizer
@@ -529,6 +530,17 @@ Variants {
                 FadeLoader {
                     shown: widgetCanvas.widgetOptions.widgets.images.enable
                     sourceComponent: ImageConverterWidget {
+                        screenWidth: bgRoot.screen.width
+                        screenHeight: bgRoot.screen.height
+                        scaledScreenWidth: bgRoot.screen.width
+                        scaledScreenHeight: bgRoot.screen.height
+                        wallpaperScale: 1
+                    }
+                }
+
+                FadeLoader {
+                    shown: widgetCanvas.widgetOptions.widgets.peripheralBattery.enable
+                    sourceComponent: PeripheralBatteryWidget {
                         screenWidth: bgRoot.screen.width
                         screenHeight: bgRoot.screen.height
                         scaledScreenWidth: bgRoot.screen.width
