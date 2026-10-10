@@ -7,11 +7,12 @@ import QtQuick
 
 Column {
     id: root
+    property var widgetOptions: WidgetProfiles.forItem(parent)
     property list<string> clockNumbers: DateTime.time.split(/[: ]/)
-    property bool isEnabled: Config.options.background.widgets.clock.cookie.timeIndicators
+    property bool isEnabled: root.widgetOptions.widgets.clock.cookie.timeIndicators
     property color color: Appearance.colors.colOnSecondaryContainer
 
-    property bool hourMarksEnabled: Config.options.background.widgets.clock.cookie.hourMarks
+    property bool hourMarksEnabled: root.widgetOptions.widgets.clock.cookie.hourMarks
     spacing: -16
 
     Repeater {

@@ -16,10 +16,10 @@ AbstractBackgroundWidget {
     implicitHeight: contentColumn.implicitHeight
     implicitWidth: contentColumn.implicitWidth
 
-    readonly property string clockStyle: GlobalStates.screenLocked ? Config.options.background.widgets.clock.styleLocked : Config.options.background.widgets.clock.style
+    readonly property string clockStyle: GlobalStates.screenLocked ? root.widgetOptions.widgets.clock.styleLocked : root.widgetOptions.widgets.clock.style
     readonly property bool forceCenter: (GlobalStates.screenLocked && Config.options.lock.centerClock)
-    readonly property bool shouldShow: (!Config.options.background.widgets.clock.showOnlyWhenLocked || GlobalStates.screenLocked)
-    readonly property string customClockColorKey: Config.options.background.widgets.clock.color ?? ""
+    readonly property bool shouldShow: (!root.widgetOptions.widgets.clock.showOnlyWhenLocked || GlobalStates.screenLocked)
+    readonly property string customClockColorKey: root.widgetOptions.widgets.clock.color ?? ""
     readonly property color resolvedClockColor: {
         if (customClockColorKey === "") return root.colText;
         const propName = "col" + customClockColorKey.charAt(0).toUpperCase() + customClockColorKey.slice(1);
@@ -37,7 +37,7 @@ AbstractBackgroundWidget {
     }
 
     property var textHorizontalAlignment: {
-        if (!Config.options.background.widgets.clock.digital.adaptiveAlignment || root.forceCenter || Config.options.background.widgets.clock.digital.vertical) 
+        if (!root.widgetOptions.widgets.clock.digital.adaptiveAlignment || root.forceCenter || root.widgetOptions.widgets.clock.digital.vertical)
             return Text.AlignHCenter;
         if (root.x < root.scaledScreenWidth / 3)
             return Text.AlignLeft;
@@ -83,13 +83,13 @@ AbstractBackgroundWidget {
         FadeLoader {
             id: quoteLoader
             anchors.horizontalCenter: parent.horizontalCenter
-            shown: Config.options.background.widgets.clock.quote.enable
+            shown: root.widgetOptions.widgets.clock.quote.enable
                 && (root.clockStyle === "pixel" || root.clockStyle === "cookie")
-                && Config.options.background.widgets.clock.quote.text !== ""
+                && root.widgetOptions.widgets.clock.quote.text !== ""
                 && root.shouldShow
             sourceComponent: CookieQuote {
                 clockStyle: root.clockStyle
-                pixelOrientation: Config.options.background.widgets.clock.pixel.orientation
+                pixelOrientation: root.widgetOptions.widgets.clock.pixel.orientation
             }
         }
         StatusRow {

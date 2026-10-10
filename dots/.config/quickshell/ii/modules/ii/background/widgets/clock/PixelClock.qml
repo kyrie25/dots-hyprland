@@ -11,8 +11,9 @@ import qs.modules.ii.background.widgets
 
 Item {
     id: root
+    property var widgetOptions: WidgetProfiles.forItem(parent)
 
-    readonly property bool isVertical: Config.options.background.widgets.clock.pixel.orientation === "vertical"
+    readonly property bool isVertical: root.widgetOptions.widgets.clock.pixel.orientation === "vertical"
 
     implicitWidth: isVertical ? 276 : 420
     implicitHeight: isVertical ? 252 : 150

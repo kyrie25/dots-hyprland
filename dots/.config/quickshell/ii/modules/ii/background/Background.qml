@@ -417,6 +417,7 @@ Variants {
             }
 
             WidgetCanvas {
+                property var widgetOptions: WidgetProfiles.forMonitor(bgRoot.screen.name)
                 id: widgetCanvas
                 z: 3
                 width: parent.width
@@ -448,7 +449,7 @@ Variants {
                 }
 
                 FadeLoader {
-                    shown: Config.options.background.widgets.visualizer.enable
+                    shown: widgetCanvas.widgetOptions.widgets.visualizer.enable
                     sourceComponent: VisualizerWidget {
                         screenWidth: bgRoot.screen.width
                         screenHeight: bgRoot.screen.height
@@ -459,7 +460,7 @@ Variants {
                 }
 
                 FadeLoader {
-                    shown: Config.options.background.widgets.customImage.enable
+                    shown: widgetCanvas.widgetOptions.widgets.customImage.enable
                     sourceComponent: CustomImage {
                         screenWidth: bgRoot.screen.width
                         screenHeight: bgRoot.screen.height
@@ -470,7 +471,7 @@ Variants {
                 }
 
                 FadeLoader {
-                    shown: Config.options.background.widgets.calendar.enable
+                    shown: widgetCanvas.widgetOptions.widgets.calendar.enable
                     sourceComponent: CalendarWidget {
                         screenWidth: bgRoot.screen.width
                         screenHeight: bgRoot.screen.height
@@ -481,7 +482,7 @@ Variants {
                 }
 
                 FadeLoader {
-                    shown: Config.options.background.widgets.weather.enable
+                    shown: widgetCanvas.widgetOptions.widgets.weather.enable
                     sourceComponent: WeatherWidget {
                         screenWidth: bgRoot.screen.width
                         screenHeight: bgRoot.screen.height
@@ -492,7 +493,7 @@ Variants {
                 }
 
                 FadeLoader {
-                    shown: Config.options.background.widgets.clock.enable
+                    shown: widgetCanvas.widgetOptions.widgets.clock.enable
                     sourceComponent: ClockWidget {
                         screenWidth: bgRoot.screen.width
                         screenHeight: bgRoot.screen.height
@@ -504,7 +505,7 @@ Variants {
                 }
 
                 FadeLoader {
-                    shown: Config.options.background.widgets.notes.enable
+                    shown: widgetCanvas.widgetOptions.widgets.notes.enable
                     sourceComponent: NotesWidget {
                         screenWidth: bgRoot.screen.width
                         screenHeight: bgRoot.screen.height
@@ -515,7 +516,7 @@ Variants {
                 }
 
                 FadeLoader {
-                    shown: Config.options.background.widgets.media.enable
+                    shown: widgetCanvas.widgetOptions.widgets.media.enable
                     sourceComponent: MediaWidget {
                         screenWidth: bgRoot.screen.width
                         screenHeight: bgRoot.screen.height
@@ -526,7 +527,7 @@ Variants {
                 }
 
                 FadeLoader {
-                    shown: Config.options.background.widgets.images.enable
+                    shown: widgetCanvas.widgetOptions.widgets.images.enable
                     sourceComponent: ImageConverterWidget {
                         screenWidth: bgRoot.screen.width
                         screenHeight: bgRoot.screen.height
@@ -537,7 +538,7 @@ Variants {
                 }
 
                 FadeLoader {
-                    shown: Config.options.background.widgets.resources.enable
+                    shown: widgetCanvas.widgetOptions.widgets.resources.enable
                     sourceComponent: ResourcesWidget {
                         screenWidth: bgRoot.screen.width
                         screenHeight: bgRoot.screen.height
@@ -548,7 +549,7 @@ Variants {
                 }
 
                 FadeLoader {
-                    shown: Config.options.background.widgets.worldClock.enable
+                    shown: widgetCanvas.widgetOptions.widgets.worldClock.enable
                     sourceComponent: WorldClockWidget {
                         screenWidth: bgRoot.screen.width
                         screenHeight: bgRoot.screen.height
@@ -559,7 +560,7 @@ Variants {
                 }
 
                 FadeLoader {
-                    shown: Config.options.background.widgets.userCard.enable
+                    shown: widgetCanvas.widgetOptions.widgets.userCard.enable
                     sourceComponent: UserCardWidget {
                         screenWidth: bgRoot.screen.width
                         screenHeight: bgRoot.screen.height

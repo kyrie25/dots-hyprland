@@ -54,7 +54,7 @@ Scope {
 
     Process {
         id: cavaProc
-        running: (GlobalStates.mediaControlsOpen || Config.options.background.widgets.visualizer.enable) && MprisController.activePlayer !== null
+        running: (GlobalStates.mediaControlsOpen || WidgetProfiles.visualizerEnabled) && MprisController.activePlayer !== null
         onRunningChanged: {
             if (!cavaProc.running) {
                 GlobalStates.visualizerPoints = [];

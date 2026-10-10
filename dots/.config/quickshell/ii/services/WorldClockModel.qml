@@ -1,61 +1,60 @@
-pragma Singleton
 import qs
 import qs.modules.common
 import QtQuick
 import Quickshell
 import Quickshell.Io
 
-Singleton {
+Scope {
     id: root
 
     // just fb fixme later
     readonly property var fallbackTimezones: [
         // O
-        "Pacific/Auckland", "Pacific/Fiji", "Pacific/Guam", "Pacific/Honolulu", 
+        "Pacific/Auckland", "Pacific/Fiji", "Pacific/Guam", "Pacific/Honolulu",
         "Pacific/Pago_Pago", "Pacific/Apia", "Pacific/Tahiti",
-        "Australia/Sydney", "Australia/Melbourne", "Australia/Brisbane", 
+        "Australia/Sydney", "Australia/Melbourne", "Australia/Brisbane",
         "Australia/Adelaide", "Australia/Darwin", "Australia/Perth",
 
         // A
-        "Asia/Tokyo", "Asia/Seoul", "Asia/Shanghai", "Asia/Hong_Kong", 
-        "Asia/Taipei", "Asia/Singapore", "Asia/Kuala_Lumpur", "Asia/Manila", 
-        "Asia/Makassar", "Asia/Jakarta", "Asia/Bangkok", "Asia/Ho_Chi_Minh", 
-        "Asia/Yangon", "Asia/Dhaka", "Asia/Kathmandu", "Asia/Kolkata", 
-        "Asia/Karachi", "Asia/Tashkent", "Asia/Kabul", "Asia/Dubai", 
-        "Asia/Muscat", "Asia/Tehran", "Asia/Baghdad", "Asia/Riyadh", 
-        "Asia/Kuwait", "Asia/Qatar", "Asia/Jerusalem", "Asia/Beirut", 
+        "Asia/Tokyo", "Asia/Seoul", "Asia/Shanghai", "Asia/Hong_Kong",
+        "Asia/Taipei", "Asia/Singapore", "Asia/Kuala_Lumpur", "Asia/Manila",
+        "Asia/Makassar", "Asia/Jakarta", "Asia/Bangkok", "Asia/Ho_Chi_Minh",
+        "Asia/Yangon", "Asia/Dhaka", "Asia/Kathmandu", "Asia/Kolkata",
+        "Asia/Karachi", "Asia/Tashkent", "Asia/Kabul", "Asia/Dubai",
+        "Asia/Muscat", "Asia/Tehran", "Asia/Baghdad", "Asia/Riyadh",
+        "Asia/Kuwait", "Asia/Qatar", "Asia/Jerusalem", "Asia/Beirut",
         "Asia/Damascus", "Asia/Nicosia",
 
         // UE
-        "Europe/Moscow", "Europe/Istanbul", "Europe/Athens", "Europe/Bucharest", 
-        "Europe/Helsinki", "Europe/Kiev", "Europe/Minsk", "Europe/Warsaw", 
-        "Europe/Vienna", "Europe/Prague", "Europe/Budapest", "Europe/Berlin", 
-        "Europe/Paris", "Europe/Brussels", "Europe/Amsterdam", "Europe/Zurich", 
-        "Europe/Madrid", "Europe/Rome", "Europe/London", "Europe/Dublin", 
+        "Europe/Moscow", "Europe/Istanbul", "Europe/Athens", "Europe/Bucharest",
+        "Europe/Helsinki", "Europe/Kiev", "Europe/Minsk", "Europe/Warsaw",
+        "Europe/Vienna", "Europe/Prague", "Europe/Budapest", "Europe/Berlin",
+        "Europe/Paris", "Europe/Brussels", "Europe/Amsterdam", "Europe/Zurich",
+        "Europe/Madrid", "Europe/Rome", "Europe/London", "Europe/Dublin",
         "Europe/Lisbon", "Atlantic/Reykjavik", "Atlantic/Azores",
 
         // A
-        "Africa/Cairo", "Africa/Johannesburg", "Africa/Nairobi", "Africa/Addis_Ababa", 
-        "Africa/Khartoum", "Africa/Lagos", "Africa/Kinshasa", "Africa/Algiers", 
+        "Africa/Cairo", "Africa/Johannesburg", "Africa/Nairobi", "Africa/Addis_Ababa",
+        "Africa/Khartoum", "Africa/Lagos", "Africa/Kinshasa", "Africa/Algiers",
         "Africa/Casablanca", "Africa/Tunis", "Africa/Accra", "Africa/Dakar",
 
         // SA
-        "America/Sao_Paulo", "America/Rio_Branco", "America/Buenos_Aires", 
-        "America/Cordoba", "America/Santiago", "America/Asuncion", "America/Montevideo", 
-        "America/La_Paz", "America/Cuiaba", "America/Lima", "America/Bogota", 
+        "America/Sao_Paulo", "America/Rio_Branco", "America/Buenos_Aires",
+        "America/Cordoba", "America/Santiago", "America/Asuncion", "America/Montevideo",
+        "America/La_Paz", "America/Cuiaba", "America/Lima", "America/Bogota",
         "America/Guayaquil", "America/Caracas",
 
         // CA
-        "America/Panama", "America/Costa_Rica", "America/El_Salvador", 
-        "America/Guatemala", "America/Managua", "America/Tegucigalpa", 
-        "America/Havana", "America/Santo_Domingo", "America/Puerto_Rico", 
+        "America/Panama", "America/Costa_Rica", "America/El_Salvador",
+        "America/Guatemala", "America/Managua", "America/Tegucigalpa",
+        "America/Havana", "America/Santo_Domingo", "America/Puerto_Rico",
         "America/Jamaica",
 
         // NA
-        "America/Mexico_City", "America/Monterrey", "America/Tijuana", 
-        "America/New_York", "America/Miami", "America/Detroit", "America/Chicago", 
-        "America/Houston", "America/Denver", "America/Phoenix", "America/Los_Angeles", 
-        "America/Anchorage", "America/Vancouver", "America/Edmonton", 
+        "America/Mexico_City", "America/Monterrey", "America/Tijuana",
+        "America/New_York", "America/Miami", "America/Detroit", "America/Chicago",
+        "America/Houston", "America/Denver", "America/Phoenix", "America/Los_Angeles",
+        "America/Anchorage", "America/Vancouver", "America/Edmonton",
         "America/Winnipeg", "America/Toronto", "America/Halifax", "America/St_Johns"
     ]
 
@@ -79,15 +78,15 @@ Singleton {
 
     readonly property var comboModel: root.timezoneList.map(tz => ({ label: root.labelFor(tz), tz: tz, icon: "" }))
 
-    property list<string> timezones: Config.options?.background?.widgets?.worldClock?.timezones ?? [
+    required property var configEntry
+    property list<string> timezones: root.configEntry?.timezones ?? [
         "Australia/Sydney", "Asia/Tokyo", "Europe/London", "America/New_York"
     ]
 
     function setTimezone(index, tz) {
         let updated = root.timezones.slice()
         updated[index] = tz
-        root.timezones = updated
-        Config.options.background.widgets.worldClock.timezones = updated
+        root.configEntry.timezones = updated
     }
 
     onTimezonesChanged: root.refreshOffsets()
@@ -186,4 +185,3 @@ Singleton {
         isDay: root.isDaytimeFor(i)
     }))
 }
-

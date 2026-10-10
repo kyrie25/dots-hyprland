@@ -6,10 +6,11 @@ import Qt5Compat.GraphicalEffects
 
 Item {
     id: root
+    property var widgetOptions: WidgetProfiles.forItem(parent)
 
-    readonly property string quoteText: Config.options.background.widgets.clock.quote.text
-    property string clockStyle: Config.options.background.widgets.clock.style
-    property string pixelOrientation: Config.options.background.widgets.clock.pixel.orientation
+    readonly property string quoteText: root.widgetOptions.widgets.clock.quote.text
+    property string clockStyle: root.widgetOptions.widgets.clock.style
+    property string pixelOrientation: root.widgetOptions.widgets.clock.pixel.orientation
 
     implicitWidth: quoteBox.implicitWidth
     implicitHeight: quoteBox.implicitHeight
@@ -49,11 +50,11 @@ Item {
             StyledText {
                 id: quoteStyledText
                 horizontalAlignment: Text.AlignLeft
-                text: Config.options.background.widgets.clock.quote.text
+                text: root.widgetOptions.widgets.clock.quote.text
                 color: Appearance.colors.colOnSecondaryContainer
                 font {
-                    family: Config.options.background.widgets.clock.quote.followClock
-                        ? Config.options.background.widgets.clock.digital.font.family
+                    family: root.widgetOptions.widgets.clock.quote.followClock
+                        ? root.widgetOptions.widgets.clock.digital.font.family
                         : Appearance.font.family.reading
                     pixelSize: Appearance.font.pixelSize.large
                     weight: Font.Normal

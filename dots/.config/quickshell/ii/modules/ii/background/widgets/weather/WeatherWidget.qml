@@ -226,7 +226,7 @@ AbstractBackgroundWidget {
         ResizeHandler {
             anchorItem: card
             hoverActive: root.containsMouse
-            locked: Config.options.background.widgetsLocked
+            locked: root.widgetOptions.widgetsLocked
             currentWidth: root.widgetWidth
             onResized: (newWidth) => { root.sizeMode = root.modeForWidth(newWidth) }
             onResizeFinished: { root.configEntry.sizeMode = root.sizeMode }

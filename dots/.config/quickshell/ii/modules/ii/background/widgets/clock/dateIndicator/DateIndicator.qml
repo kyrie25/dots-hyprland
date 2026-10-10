@@ -7,6 +7,7 @@ import QtQuick
 
 Item {
     id: root
+    property var widgetOptions: WidgetProfiles.forItem(parent)
     property string style: "bubble"
     property color color: Appearance.colors.colOnSecondaryContainer
     property real dateSquareSize: 64
@@ -14,7 +15,7 @@ Item {
     // Rotating date
     FadeLoader {
         anchors.fill: parent
-        shown: Config.options.background.widgets.clock.cookie.dateStyle === "border"
+        shown: root.widgetOptions.widgets.clock.cookie.dateStyle === "border"
         sourceComponent: RotatingDate {
             color: root.color
         }

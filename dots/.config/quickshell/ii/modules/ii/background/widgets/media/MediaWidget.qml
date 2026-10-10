@@ -759,7 +759,7 @@ AbstractBackgroundWidget {
         ResizeHandler {
             anchorItem: card
             hoverActive: root.containsMouse
-            locked: Config.options.background.widgetsLocked
+            locked: root.widgetOptions.widgetsLocked
             currentWidth: root.widgetWidth
             resizeMode: "diagonal"
             onResizedXY: (dx, dy, startWidth) => { root.sizeMode = root.modeForDrag(dx, dy, startWidth) }

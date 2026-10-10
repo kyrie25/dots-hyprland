@@ -4,10 +4,12 @@ import QtQuick
 import QtQuick.Layouts
 
 StyledText {
+    id: root
+    property var widgetOptions: WidgetProfiles.forItem(parent)
     Layout.fillWidth: true
     font {
-        family: Config.options.background.widgets.clock.quote.followClock
-            ? Config.options.background.widgets.clock.digital.font.family
+        family: root.widgetOptions.widgets.clock.quote.followClock
+            ? root.widgetOptions.widgets.clock.digital.font.family
             : Appearance.font.family.expressive
         pixelSize: 20
         weight: 350
@@ -17,5 +19,5 @@ StyledText {
     }
     style: Text.Raised
     styleColor: Appearance.colors.colShadow
-    animateChange: Config.options.background.widgets.clock.digital.animateChange
+    animateChange: root.widgetOptions.widgets.clock.digital.animateChange
 }

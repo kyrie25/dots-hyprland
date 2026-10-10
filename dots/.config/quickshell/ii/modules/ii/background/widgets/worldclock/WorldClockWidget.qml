@@ -10,6 +10,10 @@ import qs.modules.ii.background.widgets
 
 AbstractBackgroundWidget {
     id: root
+    WorldClockModel {
+        id: worldClock
+        configEntry: root.configEntry
+    }
     configEntryName: "worldClock"
     hoverEnabled: true
 
@@ -36,7 +40,7 @@ AbstractBackgroundWidget {
     property string localCityName: Weather.data?.city ?? "..."
     property string localTime: DateTime.time
     property string localDate: Qt.locale().toString(new Date(), "dddd, MMMM dd yyyy")
-    property var worldCities: WorldClock.entries
+    property var worldCities: worldClock.entries
     property bool showingSettings: false
 
     onShowingSettingsChanged: GlobalStates.desktopWidgetKeyboardFocus = showingSettings
@@ -238,29 +242,29 @@ AbstractBackgroundWidget {
                     }
 
                     StyledComboBoxSearch {
-                        model: WorldClock.comboModel
+                        model: worldClock.comboModel
                         colBackground: ColorUtils.transparentize(Appearance.colors.colLayer0, 0.8)
                         textRole: "label"
-                        currentIndex: WorldClock.comboModel.findIndex(m => m.tz === WorldClock.timezones[0])
-                        onActivated: (idx) => WorldClock.setTimezone(0, WorldClock.comboModel[idx].tz)
+                        currentIndex: worldClock.comboModel.findIndex(m => m.tz === worldClock.timezones[0])
+                        onActivated: (idx) => worldClock.setTimezone(0, worldClock.comboModel[idx].tz)
                     }
                     StyledComboBoxSearch {
-                        model: WorldClock.comboModel; textRole: "label"
+                        model: worldClock.comboModel; textRole: "label"
                         colBackground: ColorUtils.transparentize(Appearance.colors.colLayer0, 0.8)
-                        currentIndex: WorldClock.comboModel.findIndex(m => m.tz === WorldClock.timezones[1])
-                        onActivated: (idx) => WorldClock.setTimezone(1, WorldClock.comboModel[idx].tz)
+                        currentIndex: worldClock.comboModel.findIndex(m => m.tz === worldClock.timezones[1])
+                        onActivated: (idx) => worldClock.setTimezone(1, worldClock.comboModel[idx].tz)
                     }
                     StyledComboBoxSearch {
-                        model: WorldClock.comboModel; textRole: "label"
+                        model: worldClock.comboModel; textRole: "label"
                         colBackground: ColorUtils.transparentize(Appearance.colors.colLayer0, 0.8)
-                        currentIndex: WorldClock.comboModel.findIndex(m => m.tz === WorldClock.timezones[2])
-                        onActivated: (idx) => WorldClock.setTimezone(2, WorldClock.comboModel[idx].tz)
+                        currentIndex: worldClock.comboModel.findIndex(m => m.tz === worldClock.timezones[2])
+                        onActivated: (idx) => worldClock.setTimezone(2, worldClock.comboModel[idx].tz)
                     }
                     StyledComboBoxSearch {
-                        model: WorldClock.comboModel; textRole: "label"
+                        model: worldClock.comboModel; textRole: "label"
                         colBackground: ColorUtils.transparentize(Appearance.colors.colLayer0, 0.8)
-                        currentIndex: WorldClock.comboModel.findIndex(m => m.tz === WorldClock.timezones[3])
-                        onActivated: (idx) => WorldClock.setTimezone(3, WorldClock.comboModel[idx].tz)
+                        currentIndex: worldClock.comboModel.findIndex(m => m.tz === worldClock.timezones[3])
+                        onActivated: (idx) => worldClock.setTimezone(3, worldClock.comboModel[idx].tz)
                     }
                 }
             }
@@ -314,7 +318,7 @@ AbstractBackgroundWidget {
             ResizeHandler {
                 anchorItem: contentRect
                 hoverActive: root.containsMouse
-                locked: Config.options.background.widgetsLocked || root.showingSettings
+                locked: root.widgetOptions.widgetsLocked || root.showingSettings
                 currentWidth: root.widgetWidth
                 onResizedXY: (dx, dy, startWidth) => { root.sizeMode = root.modeForDrag(dx) }
                 onResizeFinished: { root.configEntry.sizeMode = root.sizeMode }

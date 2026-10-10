@@ -15,9 +15,9 @@ AbstractBackgroundWidget {
     configEntryName: "customImage"
     hoverEnabled: true
 
-    property string imagePath: Config.options.background.widgets.customImage.path ?? ""
+    property string imagePath: root.widgetOptions.widgets.customImage.path ?? ""
     property bool dropHover: false
-    property real widgetSize: Config.options.background.widgets.customImage.size ?? 200
+    property real widgetSize: root.widgetOptions.widgets.customImage.size ?? 200
 
     implicitWidth: contentItem.implicitWidth
     implicitHeight: contentItem.implicitHeight
@@ -79,7 +79,7 @@ AbstractBackgroundWidget {
             id: shadowShape
             anchors.fill: parent
             color: Appearance.colors.colPrimaryContainer
-            shape: getShape(Config.options.background.widgets.customImage.shape ?? "Cookie4Sided")
+            shape: getShape(root.widgetOptions.widgets.customImage.shape ?? "Cookie4Sided")
             visible: false
         }
 
@@ -93,14 +93,14 @@ AbstractBackgroundWidget {
             anchors.fill: parent
             z: 0
             color: Appearance.colors.colPrimaryContainer
-            shape: getShape(Config.options.background.widgets.customImage.shape ?? "Cookie4Sided")
+            shape: getShape(root.widgetOptions.widgets.customImage.shape ?? "Cookie4Sided")
 
             layer.enabled: true
             layer.effect: OpacityMask {
                 maskSource: MaterialShape {
                     width: imageShape.width
                     height: imageShape.height
-                    shape: getShape(Config.options.background.widgets.customImage.shape ?? "Cookie4Sided")
+                    shape: getShape(root.widgetOptions.widgets.customImage.shape ?? "Cookie4Sided")
                 }
             }
 
@@ -144,7 +144,7 @@ AbstractBackgroundWidget {
                         var ext = cleanPath.split(".").pop().toLowerCase()
                         var accepted = ["png","jpg","jpeg","webp","avif","bmp","gif","tiff","tif"]
                         if (accepted.indexOf(ext) !== -1) {
-                            Config.options.background.widgets.customImage.path = cleanPath
+                            root.widgetOptions.widgets.customImage.path = cleanPath
                         }
                     }
                     root.dropHover = false
@@ -155,7 +155,7 @@ AbstractBackgroundWidget {
         ResizeHandler{
             anchorItem: imageShape
             hoverActive: root.containsMouse
-            locked: Config.options.background.widgetsLocked
+            locked: root.widgetOptions.widgetsLocked
             currentWidth: root.widgetSize
             resizeMode: "diagonal"
             z: 1
@@ -163,7 +163,7 @@ AbstractBackgroundWidget {
                 root.widgetSize = Math.max(80, newValue)
             }
             onResizeFinished: {
-                Config.options.background.widgets.customImage.size = root.widgetSize
+                root.widgetOptions.widgets.customImage.size = root.widgetSize
             }
         }
     }

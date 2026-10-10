@@ -16,7 +16,8 @@ AbstractWidget {
     required property int scaledScreenHeight
     required property real wallpaperScale
     property bool visibleWhenLocked: false
-    property var configEntry: Config.options.background.widgets[configEntryName]
+    property var widgetOptions: WidgetProfiles.forItem(parent)
+    property var configEntry: root.widgetOptions.widgets[configEntryName]
     property string placementStrategy: configEntry.placementStrategy
     property real targetX: Math.max(0, Math.min(configEntry.x, scaledScreenWidth - width))
     property real targetY : Math.max(0, Math.min(configEntry.y, scaledScreenHeight - height))
@@ -32,7 +33,7 @@ AbstractWidget {
         animation: Appearance.animation.elementResize.numberAnimation.createObject(this)
     }
 
-    draggable: placementStrategy === "free" && !Config.options.background.widgetsLocked
+    draggable: placementStrategy === "free" && !root.widgetOptions.widgetsLocked
     function restoreXYBinding() {
         root.x = Qt.binding(() => root.targetX)
         root.y = Qt.binding(() => root.targetY)

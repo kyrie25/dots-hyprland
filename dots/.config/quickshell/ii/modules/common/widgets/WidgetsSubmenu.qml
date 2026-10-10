@@ -9,6 +9,7 @@ import QtQuick.Layouts
 
 Item {
     id: root
+    property var widgetOptions: WidgetProfiles.forMonitor(GlobalStates.desktopMenuScreen?.name ?? "")
     implicitHeight: col.implicitHeight + 16
 
     readonly property var widgetList: [
@@ -40,8 +41,8 @@ Item {
             Layout.fillWidth: true
             buttonIcon: "lock"
             text: Translation.tr("Lock widget positions")
-            checked: Config.options.background.widgetsLocked
-            onCheckedChanged: Config.options.background.widgetsLocked = checked
+            checked: root.widgetOptions.widgetsLocked
+            onCheckedChanged: root.widgetOptions.widgetsLocked = checked
         }
 
         Rectangle {
@@ -60,8 +61,8 @@ Item {
                 Layout.fillWidth: true
                 buttonIcon: modelData.icon
                 text: modelData.name
-                checked: Config.options.background.widgets[modelData.key].enable
-                onCheckedChanged: Config.options.background.widgets[modelData.key].enable = checked
+                checked: root.widgetOptions.widgets[modelData.key].enable
+                onCheckedChanged: root.widgetOptions.widgets[modelData.key].enable = checked
             }
         }
     }

@@ -7,15 +7,16 @@ import QtQuick
 
 Item {
     id: root
+    property var widgetOptions: WidgetProfiles.forItem(parent)
 
-    property string style: Config.options.background.widgets.clock.cookie.dateStyle
+    property string style: root.widgetOptions.widgets.clock.cookie.dateStyle
     property color color: Appearance.colors.colOnSecondaryContainer
     property real angleStep: 12 * Math.PI / 180
     property string dateText: Qt.locale().toString(DateTime.clock.date, "ddd dd")
     
     readonly property int clockSecond: DateTime.clock.seconds
-    readonly property string dialStyle: Config.options.background.widgets.clock.cookie.dialNumberStyle
-    readonly property bool timeIndicators: Config.options.background.widgets.clock.cookie.timeIndicators
+    readonly property string dialStyle: root.widgetOptions.widgets.clock.cookie.dialNumberStyle
+    readonly property bool timeIndicators: root.widgetOptions.widgets.clock.cookie.timeIndicators
 
     property real radius: style === "border" ? 90 : 0
     Behavior on radius {

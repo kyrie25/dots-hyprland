@@ -6,7 +6,8 @@ import QtQuick
 
 Rectangle {
     id: rect
-    readonly property string dialStyle: Config.options.background.widgets.clock.cookie.dialNumberStyle
+    property var widgetOptions: WidgetProfiles.forItem(parent)
+    readonly property string dialStyle: rect.widgetOptions.widgets.clock.cookie.dialNumberStyle
 
     StyledText {
         anchors.centerIn: parent

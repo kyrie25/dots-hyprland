@@ -6,10 +6,11 @@ import QtQuick
 
 Item {
     id: root
+    property var widgetOptions: WidgetProfiles.forItem(parent)
 
     property color color: Appearance.colors.colOnSecondaryContainer
-    property string style: Config.options.background.widgets.clock.cookie.dialNumberStyle // "dots", "numbers", "full", "hide"
-    property string dateStyle : Config.options.background.widgets.clock.cookie.dateStyle
+    property string style: root.widgetOptions.widgets.clock.cookie.dialNumberStyle // "dots", "numbers", "full", "hide"
+    property string dateStyle : root.widgetOptions.widgets.clock.cookie.dateStyle
 
     // 12 Dots
     FadeLoader {
