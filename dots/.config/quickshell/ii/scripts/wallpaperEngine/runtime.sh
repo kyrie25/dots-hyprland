@@ -19,6 +19,9 @@ declare -A configured_monitors=()
 declare -A renderer_states=()
 declare -A renderer_grace_deadlines=()
 declare -A persistent_mutes=()
+declare -A renderer_signatures=()
+declare -A renderer_control_files=()
+engine_live_control=false
 
 write_state() {
     mkdir -p "$LOG_DIR"
@@ -113,8 +116,24 @@ stop_renderers() {
 
 signal_renderers() {
     local signal="$1"
-    pkill "-$signal" -f "$ENGINE_PATTERN" 2>/dev/null || true
-    pkill "-$signal" -x mpvpaper 2>/dev/null || true
+    local pid
+    while IFS= read -r pid; do
+        [[ -n "$pid" ]] && signal_process "$pid" "$signal"
+    done < <({ pgrep -f "$ENGINE_PATTERN"; pgrep -x mpvpaper; } 2>/dev/null)
+}
+
+signal_process() {
+    # Chromium may create process groups inside our session. Signal all of them.
+    pkill "-$2" -s "$1" 2>/dev/null \
+        || kill "-$2" -- "-$1" 2>/dev/null || kill "-$2" "$1" 2>/dev/null || true
+}
+
+process_session() {
+    local stat process_state parent group session rest
+    [[ "$1" =~ ^[0-9]+$ ]] || return 1
+    { read -r stat <"/proc/$1/stat"; } 2>/dev/null || return 1
+    read -r process_state parent group session rest <<<"${stat##*) }"
+    printf '%s\n' "$session"
 }
 
 pause_renderers() {
@@ -156,8 +175,11 @@ find_engine() {
 stop_children() {
     [[ ${#renderer_pids[@]} -gt 0 ]] || return
     local -a pids=("${renderer_pids[@]}")
-    kill -CONT "${pids[@]}" 2>/dev/null || true
-    kill -TERM "${pids[@]}" 2>/dev/null || true
+    local monitor
+    for monitor in "${!renderer_pids[@]}"; do
+        signal_renderer "$monitor" CONT
+        signal_renderer "$monitor" TERM
+    done
     wait "${pids[@]}" 2>/dev/null || true
     renderer_pids=()
     renderer_grace_deadlines=()
@@ -167,8 +189,8 @@ stop_renderer() {
     local monitor="$1"
     local pid="${renderer_pids[$monitor]:-}"
     [[ -n "$pid" ]] || return
-    kill -CONT "$pid" 2>/dev/null || true
-    kill -TERM "$pid" 2>/dev/null || true
+    signal_process "$pid" CONT
+    signal_process "$pid" TERM
     wait "$pid" 2>/dev/null || true
     unset 'renderer_pids[$monitor]'
     unset 'renderer_grace_deadlines[$monitor]'
@@ -189,7 +211,7 @@ signal_renderer() {
     local monitor="$1"
     local signal="$2"
     local pid="${renderer_pids[$monitor]:-}"
-    [[ -n "$pid" ]] && kill "-$signal" "$pid" 2>/dev/null || true
+    [[ -n "$pid" ]] && signal_process "$pid" "$signal"
 }
 
 property_args() {
@@ -208,6 +230,55 @@ property_args() {
     ' <<<"$properties")
 }
 
+monitor_entry() {
+    jq -c --arg monitor "$1" '
+        ((.background.wallpapersByMonitor // []) | map(select(.monitor == $monitor)) | .[0]) as $entry
+        | {
+            path: ($entry.path // .background.wallpaperPath // ""),
+            type: ($entry.type // .background.wallpaperType // "auto"),
+            scaling: ($entry.scaling // "fill"),
+            alignX: ($entry.alignX // "center"),
+            alignY: ($entry.alignY // "center"),
+            muted: ($entry.muted // false),
+            properties: ($entry.properties // {})
+        }
+    ' "$CONFIG_FILE"
+}
+
+renderer_signature() {
+    local entry="$1" settings="$2"
+    jq -cnS --argjson entry "$entry" --argjson settings "$settings" --argjson live "$engine_live_control" '
+        {path: $entry.path, type: $entry.type, properties: $entry.properties,
+         antiAliasing: ($settings.antiAliasing // 4),
+         audioProcessing: (if $settings | has("audioProcessing") then $settings.audioProcessing else true end),
+         particles: (if $settings | has("particles") then $settings.particles else true end),
+         mouseInput: (if $settings | has("mouseInput") then $settings.mouseInput else true end),
+         parallax: (if $settings | has("parallax") then $settings.parallax else true end)}
+        + (if $live then {} else
+            {fps: ($settings.fps // 30), volume: ($settings.volume // 15),
+             muted: (if $settings | has("muted") then $settings.muted else true end), monitorMuted: $entry.muted,
+             scaling: $entry.scaling, alignX: $entry.alignX, alignY: $entry.alignY}
+           end)
+    '
+}
+
+write_renderer_control() {
+    local monitor="$1" entry="$2" settings="$3"
+    local path="${renderer_control_files[$monitor]:-}"
+    [[ -n "$path" ]] || return 0
+    local control
+    control="$(jq -cn --argjson entry "$entry" --argjson settings "$settings" '
+        def axis: if . == "left" or . == "top" then 0 elif . == "right" or . == "bottom" then 1 else 0.5 end;
+        {fps: ($settings.fps // 30),
+         volume: (if (if $settings | has("muted") then $settings.muted else true end) or $entry.muted then 0 else ($settings.volume // 15) end),
+         scaling: $entry.scaling, alignment: [($entry.alignX | axis), ($entry.alignY | axis)]}
+    ')"
+    # Atomic replacement prevents the renderer from reading partially written JSON.
+    [[ -f "$path" && "$(cat "$path")" == "$control" ]] && return 0
+    printf '%s\n' "$control" >"$path.tmp"
+    mv "$path.tmp" "$path"
+}
+
 start_renderers() {
     [[ -f "$CONFIG_FILE" ]] || return 0
 
@@ -215,6 +286,8 @@ start_renderers() {
     local engine=""
     local assets=""
     engine="$(find_engine 2>/dev/null || true)"
+    engine_live_control=false
+    [[ -n "$engine" ]] && "$engine" --help 2>&1 | grep -q -- '--control-file' && engine_live_control=true
     assets="$(python3 "$HELPER" locate assets 2>/dev/null || true)"
     mkdir -p "$LOG_DIR"
 
@@ -244,18 +317,7 @@ start_renderers() {
     while IFS= read -r monitor; do
         [[ -n "$monitor" ]] || continue
         [[ -z "$only_monitor" || "$monitor" == "$only_monitor" ]] || continue
-        entry="$(jq -c --arg monitor "$monitor" '
-            ((.background.wallpapersByMonitor // []) | map(select(.monitor == $monitor)) | .[0]) as $entry
-            | {
-                path: ($entry.path // .background.wallpaperPath // ""),
-                type: ($entry.type // .background.wallpaperType // "auto"),
-                scaling: ($entry.scaling // "fill"),
-                alignX: ($entry.alignX // "center"),
-                alignY: ($entry.alignY // "center"),
-                muted: ($entry.muted // false),
-                properties: ($entry.properties // {})
-            }
-        ' "$CONFIG_FILE")"
+        entry="$(monitor_entry "$monitor")"
         path="$(jq -r '.path' <<<"$entry")"
         configured_type="$(jq -r '.type' <<<"$entry")"
         [[ -n "$path" && "$path" != "null" ]] || continue
@@ -275,10 +337,20 @@ start_renderers() {
                 [[ "$muted" == true || "$monitor_muted" == true ]] && audio_disabled=true
                 local -a audio_args=(--volume "$volume")
                 [[ "$audio_disabled" == true ]] && audio_args=(--silent)
+                local -a control_args=()
+                safe_monitor="${monitor//[^A-Za-z0-9_.-]/_}"
+                if [[ "$engine_live_control" == true ]]; then
+                    renderer_control_files["$monitor"]="$LOG_DIR/control-$safe_monitor.json"
+                    control_args=(--control-file "${renderer_control_files[$monitor]}")
+                    # Keep audio decoding available so mute can be reversed without reloading.
+                    [[ "$audio_disabled" == true ]] && audio_args=(--volume 0)
+                    write_renderer_control "$monitor" "$entry" "$settings"
+                fi
                 local -a engine_env=(
                     __GL_THREADED_OPTIMIZATIONS=0
                     SDL_AUDIO_DEVICE_APP_NAME="linux-wallpaperengine:$monitor"
                     SDL_AUDIO_DEVICE_STREAM_NAME="linux-wallpaperengine:$monitor"
+                    PULSE_PROP="application.name=linux-wallpaperengine:$monitor media.name=linux-wallpaperengine:$monitor"
                 )
                 if [[ "$engine" == "$HOME/.local/bin/linux-wallpaperengine" \
                     && -d "$HOME/.local/opt/linux-wallpaperengine/lib" ]]; then
@@ -288,11 +360,16 @@ start_renderers() {
                 fi
                 if [[ "${AQ_DRM_DEVICES:-}" == *nvidia*:*intel* ]]; then
                     engine_env+=(DRI_PRIME=1 LIBVA_DRIVER_NAME=iHD)
+                    # DRI_PRIME does not stop GLVND from selecting NVIDIA's Wayland EGL vendor.
+                    if [[ -z "${__EGL_VENDOR_LIBRARY_FILENAMES:-}" \
+                        && -r /usr/share/glvnd/egl_vendor.d/50_mesa.json ]]; then
+                        engine_env+=(__EGL_VENDOR_LIBRARY_FILENAMES=/usr/share/glvnd/egl_vendor.d/50_mesa.json)
+                    fi
                 fi
                 safe_monitor="${monitor//[^A-Za-z0-9_.-]/_}"
-                env -u __GLX_VENDOR_LIBRARY_NAME "${engine_env[@]}" "$engine" \
+                setsid env -u __GLX_VENDOR_LIBRARY_NAME "${engine_env[@]}" "$engine" \
                     "${common_args[@]}" \
-                    "${audio_args[@]}" \
+                    "${audio_args[@]}" "${control_args[@]}" \
                     --screen-root "$monitor" \
                     --bg "$path" \
                     --scaling "$scaling" \
@@ -302,6 +379,7 @@ start_renderers() {
                     >"$LOG_DIR/runtime-$safe_monitor.log" 2>&1 {supervisor_lock_fd}>&- &
                 renderer_pids["$monitor"]="$!"
                 configured_monitors["$monitor"]=1
+                renderer_signatures["$monitor"]="$(renderer_signature "$entry" "$settings")"
                 persistent_mutes["$monitor"]="$audio_disabled"
                 if ! renderer_started "$monitor"; then
                     stop_renderer "$monitor"
@@ -318,10 +396,12 @@ start_renderers() {
                 ;;
             video)
                 command -v mpvpaper >/dev/null 2>&1 || continue
-                mpvpaper -o "$VIDEO_OPTS" "$monitor" "$path" \
+                setsid mpvpaper -o "$VIDEO_OPTS" "$monitor" "$path" \
                     >"$LOG_DIR/mpvpaper-$monitor.log" 2>&1 {supervisor_lock_fd}>&- &
                 renderer_pids["$monitor"]="$!"
                 configured_monitors["$monitor"]=1
+                renderer_signatures["$monitor"]="$(renderer_signature "$entry" "$settings")"
+                unset 'renderer_control_files[$monitor]'
                 persistent_mutes["$monitor"]=false
                 if ! renderer_started "$monitor"; then
                     stop_renderer "$monitor"
@@ -345,6 +425,7 @@ other_audio_playing() {
             (.corked == false)
             and (.mute != true)
             and ((.properties."application.name" // "") | startswith("linux-wallpaperengine") | not)
+            and ((.properties."application.process.binary" // "") != "linux-wallpaperengine")
             and (([.volume[].value] | max // 0) > 0)
         )
     ' >/dev/null
@@ -414,14 +495,21 @@ set_renderer_audio_mute() {
     local monitor="$1"
     local muted="$2"
     command -v pactl >/dev/null 2>&1 || return
-    local index
-    while IFS= read -r index; do
-        [[ -n "$index" ]] && pactl set-sink-input-mute "$index" "$muted" >/dev/null 2>&1 || true
+    local index pid named root_pid="${renderer_pids[$monitor]:-}"
+    while IFS=$'\t' read -r index pid named; do
+        # CEF replaces PULSE_PROP with Chromium/Playback. Its audio service still
+        # belongs to the renderer session, even with a separate process group.
+        if [[ "$named" == true ]] \
+            || { [[ -n "$root_pid" ]] && [[ "$(process_session "$pid")" == "$root_pid" ]]; }; then
+            pactl set-sink-input-mute "$index" "$muted" >/dev/null 2>&1 || true
+        fi
     done < <(pactl -f json list sink-inputs 2>/dev/null | jq -r --arg stream "linux-wallpaperengine:$monitor" '
         .[]
-        | select((.properties."application.name" // "") | startswith("linux-wallpaperengine"))
-        | select((.properties."media.name" // "") == $stream)
-        | .index
+        | [.index, (.properties."application.process.id" // "0"),
+           ((.properties."application.name" // "") == $stream
+            or (((.properties."application.name" // "") | startswith("linux-wallpaperengine"))
+                and (.properties."media.name" // "") == $stream))]
+        | @tsv
     ')
 }
 
@@ -434,11 +522,7 @@ run_renderers() {
     trap 'stop_children; write_state stopped; write_empty_monitor_states' EXIT
     trap 'exit 0' INT TERM
 
-    start_renderers || {
-        write_state stopped
-        write_empty_monitor_states
-        return 0
-    }
+    start_renderers || true
     write_monitor_states
 
     local -A last_actions=()
@@ -449,6 +533,36 @@ run_renderers() {
         maximized_action="$(jq -r '.behavior.maximized // "keep"' <<<"$settings")"
         audio_action="$(jq -r '.behavior.audioPlaying // "keep"' <<<"$settings")"
         manual_pause="$(jq -r '.paused // false' <<<"$settings")"
+
+        local -A connected=()
+        local monitor entry signature type
+        while IFS= read -r monitor; do
+            [[ -n "$monitor" ]] || continue
+            connected["$monitor"]=1
+            entry="$(monitor_entry "$monitor")"
+            type="$(wallpaper_type "$(jq -r '.path' <<<"$entry")" "$(jq -r '.type' <<<"$entry")")"
+            if [[ "$type" != wallpaper-engine && "$type" != video ]]; then
+                stop_renderer "$monitor"
+                unset 'configured_monitors[$monitor]' 'renderer_signatures[$monitor]' 'renderer_control_files[$monitor]'
+                continue
+            fi
+            signature="$(renderer_signature "$entry" "$settings")"
+            if [[ "${renderer_signatures[$monitor]:-}" != "$signature" ]]; then
+                stop_renderer "$monitor"
+                unset 'last_actions[$monitor]' 'renderer_control_files[$monitor]'
+                start_renderers "$monitor" || true
+            fi
+            if [[ "$type" == wallpaper-engine && "$engine_live_control" == true ]]; then
+                persistent_mutes["$monitor"]="$(jq -nr --argjson entry "$entry" --argjson settings "$settings"                     '(if $settings | has("muted") then $settings.muted else true end) or $entry.muted')"
+                write_renderer_control "$monitor" "$entry" "$settings"
+            fi
+        done < <(hyprctl monitors -j | jq -r '.[].name')
+        for monitor in "${!configured_monitors[@]}"; do
+            if [[ -z "${connected[$monitor]:-}" ]]; then
+                stop_renderer "$monitor"
+                unset 'configured_monitors[$monitor]' 'renderer_signatures[$monitor]' 'renderer_control_files[$monitor]' 'last_actions[$monitor]'
+            fi
+        done
 
         local audio_playing=false
         other_audio_playing && audio_playing=true
@@ -544,6 +658,9 @@ case "${1:-restart}" in
     restart|restore)
         restart_renderers
         ;;
+    refresh)
+        [[ -n "$(supervisor_pids)" ]] || restart_renderers
+        ;;
     stop)
         stop_renderers
         ;;
@@ -557,7 +674,7 @@ case "${1:-restart}" in
         run_renderers
         ;;
     *)
-        printf 'Usage: %s [restart|restore|stop|pause|resume|run]\n' "$0" >&2
+        printf 'Usage: %s [restart|restore|refresh|stop|pause|resume|run]\n' "$0" >&2
         exit 2
         ;;
 esac

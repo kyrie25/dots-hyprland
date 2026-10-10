@@ -145,7 +145,7 @@ Singleton {
         id: wallpaperEngineRestartTimer
         interval: 500
         repeat: false
-        onTriggered: Quickshell.execDetached([Directories.wallpaperRuntimeScriptPath, "restart"])
+        onTriggered: Quickshell.execDetached([Directories.wallpaperRuntimeScriptPath, "refresh"])
     }
 
     function updateWallpaperEngineRuntimeState() {
