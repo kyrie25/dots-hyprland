@@ -3,8 +3,8 @@
 Enable **Peripheral batteries** in Desktop Settings or the desktop right-click
 Widgets menu. Settings and drag positions are saved independently per monitor.
 
-The horizontal bar also shows device icons and battery values beside the system
-resources, using the same circular progress and number styling. Hover for all
+The horizontal bar also shows device icons and battery values beside the laptop
+battery, using the resource indicators' circular progress and number styling. Hover for all
 device names, battery percentages and charging states. Up to three devices are
 shown in the bar (one on very narrow screens); a +N count represents the rest.
 Unknown battery values appear as ?. This replaces the old separate Bluetooth

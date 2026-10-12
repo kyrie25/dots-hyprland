@@ -111,17 +111,11 @@ Item { // Bar content region
         BarGroup {
             id: leftCenterGroup
             anchors.verticalCenter: parent.verticalCenter
-            implicitWidth: root.centerSideModuleWidth + peripheralIndicators.implicitWidth
+            implicitWidth: root.centerSideModuleWidth
 
             Resources {
                 alwaysShowAllResources: root.useShortenedForm === 2
                 Layout.fillWidth: root.useShortenedForm === 2
-            }
-
-            PeripheralBatteryIndicators {
-                id: peripheralIndicators
-                compact: root.useShortenedForm === 2
-                Layout.alignment: Qt.AlignVCenter
             }
 
             Media {
@@ -166,7 +160,7 @@ Item { // Bar content region
         MouseArea {
             id: rightCenterGroup
             anchors.verticalCenter: parent.verticalCenter
-            implicitWidth: root.centerSideModuleWidth
+            implicitWidth: root.centerSideModuleWidth + peripheralIndicators.implicitWidth
             implicitHeight: rightCenterGroupContent.implicitHeight
 
             onPressed: {
@@ -190,6 +184,12 @@ Item { // Bar content region
 
                 BatteryIndicator {
                     visible: (root.useShortenedForm < 2 && Battery.available)
+                    Layout.alignment: Qt.AlignVCenter
+                }
+
+                PeripheralBatteryIndicators {
+                    id: peripheralIndicators
+                    compact: root.useShortenedForm === 2
                     Layout.alignment: Qt.AlignVCenter
                 }
             }
@@ -347,7 +347,6 @@ Item { // Bar content region
 
             // Weather
             Loader {
-                Layout.leftMargin: 4
                 active: Config.options.bar.weather.enable
 
                 sourceComponent: BarGroup {

@@ -8,7 +8,7 @@ MouseArea {
     id: root
     property bool compact: false
     readonly property var displayedDevices: PeripheralBatteries.devices.slice(0, compact ? 1 : 3)
-    implicitWidth: PeripheralBatteries.devices.length > 0 ? row.implicitWidth + 8 : 0
+    implicitWidth: PeripheralBatteries.devices.length > 0 ? row.implicitWidth + 10 : 0
     implicitHeight: Appearance.sizes.barHeight
     visible: implicitWidth > 0
     hoverEnabled: true
@@ -25,7 +25,9 @@ MouseArea {
 
     RowLayout {
         id: row
-        anchors.centerIn: parent
+        anchors.left: parent.left
+        anchors.leftMargin: 10
+        anchors.verticalCenter: parent.verticalCenter
         spacing: 6
         Repeater {
             model: root.displayedDevices
